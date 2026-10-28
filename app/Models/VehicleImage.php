@@ -17,4 +17,9 @@ class VehicleImage extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+
+    public function sized(string $size = 'w800h600'): string
+    {
+        return str_replace('{resize}', $size, (string) $this->url);
+    }
 }

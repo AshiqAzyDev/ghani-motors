@@ -1,8 +1,12 @@
 @extends('layouts.dealer')
 @section('title', 'Sales')
+@section('actions')
+    @if (auth('staff')->user()->can('sales.view'))
+        <a class="btn smallbtn" href="{{ route('dealer.export', 'sales') }}">Export CSV</a>
+    @endif
+@endsection
 @section('content')
-<h1>Sales</h1>
-@if (auth('staff')->user()->canMutate())
+@if (auth('staff')->user()->can('sales.manage'))
 <form class="panel" method="post" action="{{ route('dealer.sales.store') }}" style="margin:1rem 0;">
     @csrf
     <div class="row">
@@ -18,17 +22,29 @@
     <button class="btn" type="submit">Record sale</button>
 </form>
 @endif
-<div class="panel"><table>
-    <tr><th>Date</th><th>Car</th><th>Customer</th><th>Price</th><th>Invoice</th></tr>
-    @foreach ($rows as $row)
-        <tr>
-            <td>{{ $row->sold_on?->format('j M Y') }}</td>
-            <td>{{ $row->vehicle_label }} <span class="badge">{{ $row->status }}</span></td>
-            <td>{{ $row->customer?->name }}</td>
-            <td>@gbp($row->price_pence)</td>
-            <td>@if($row->invoice)<a href="{{ route('dealer.invoices.show', $row->invoice) }}">{{ $row->invoice->number }}</a>@else — @endif</td>
-        </tr>
-    @endforeach
-</table></div>
+<div class="panel table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr><th class="sno">S.no</th><th>Date</th><th>Car</th><th>Customer</th><th class="num">Price</th><th>Invoice</th><th></th></tr>
+        </thead>
+        <tbody>
+            @forelse ($rows as $row)
+                <tr>
+                    <td class="sno">{{ $rows->firstItem() + $loop->index }}</td>
+                    <td>{{ $row->sold_on?->format('j M Y') }}</td>
+                    <td>{{ $row->vehicle_label }} <span class="badge {{ $row->status }}">{{ ucfirst($row->status) }}</span></td>
+                    <td>@if($row->customer)<a href="{{ route('dealer.customers.show', $row->customer) }}">{{ $row->customer->name }}</a>@endif</td>
+                    <td class="num">@gbp($row->price_pence)</td>
+                    <td>@if($row->invoice)<a href="{{ route('dealer.invoices.show', $row->invoice) }}">{{ $row->invoice->number }}</a>@else — @endif</td>
+                    <td class="row-actions">
+                        <a class="rowbtn" href="{{ route('dealer.sales.show', $row) }}">View</a>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="7" class="empty-row">No sales recorded yet.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
 {{ $rows->links() }}
 @endsection

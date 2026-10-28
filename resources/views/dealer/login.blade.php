@@ -17,6 +17,7 @@
         <h1>Sign in to manage stock, bookings and invoices.</h1>
         <p>Quality used cars, Rainham Road South, Dagenham.</p>
         @include('partials.aa-badge')
+        <a class="auth-back" href="{{ route('home') }}">← Back to website</a>
     </aside>
     <section class="auth-card">
         <form method="post" action="{{ route('dealer.login.store') }}">
@@ -27,6 +28,7 @@
             <label for="email">Email</label>
             <input id="email" type="email" name="email" required autocomplete="username" value="{{ old('email') }}">
             @include('partials.password-field', ['id' => 'password'])
+            <p class="meta" style="margin-top:8px;"><a href="{{ route('dealer.password.request') }}">Forgot password?</a></p>
             <button class="btn" type="submit">Log in</button>
         </form>
     </section>

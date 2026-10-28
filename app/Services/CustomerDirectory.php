@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Dealer;
+use App\Models\InvoiceCounter;
 use App\Models\SavedVehicle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -77,9 +78,13 @@ class CustomerDirectory
         return $customer->savedVehicles()->pluck('vehicle_id')->map(fn ($id) => (int) $id)->all();
     }
 
-    public function toggleSaved(Dealer $dealer, int $vehicleId, ?Customer $customer): bool
+    public function toggleSaved(Dealer $dealer, int $vehicleId, ?Customer $customer, bool $publicOnly = true): bool
     {
-        $vehicle = $dealer->vehicles()->public()->whereKey($vehicleId)->firstOrFail();
+        $query = $dealer->vehicles()->whereKey($vehicleId);
+        if ($publicOnly) {
+            $query->public();
+        }
+        $vehicle = $query->firstOrFail();
 
         if ($customer) {
             $existing = SavedVehicle::query()
@@ -112,10 +117,18 @@ class CustomerDirectory
         return true;
     }
 
+    public function removeSaved(Customer $customer, int $vehicleId): void
+    {
+        SavedVehicle::query()
+            ->where('customer_id', $customer->id)
+            ->where('vehicle_id', $vehicleId)
+            ->delete();
+    }
+
     public function nextInvoiceNumber(Dealer $dealer): string
     {
         return DB::transaction(function () use ($dealer) {
-            $counter = \App\Models\InvoiceCounter::query()
+            $counter = InvoiceCounter::query()
                 ->where('dealer_id', $dealer->id)
                 ->lockForUpdate()
                 ->firstOrFail();

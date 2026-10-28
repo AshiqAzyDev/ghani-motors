@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Dealer;
 use App\Models\Lead;
 use App\Services\CustomerDirectory;
+use App\Services\Mail\GhaniMailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
@@ -12,10 +14,18 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerAuthController extends Controller
 {
-    public function __construct(private CustomerDirectory $directory) {}
+    public function __construct(
+        private CustomerDirectory $directory,
+        private GhaniMailer $mailer,
+    ) {}
 
-    public function showLogin()
+    public function showLogin(Request $request)
     {
+        $redirect = $request->query('redirect');
+        if (is_string($redirect) && str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
+            $request->session()->put('url.intended', url($redirect));
+        }
+
         return view('auth.login');
     }
 
@@ -53,7 +63,7 @@ class CustomerAuthController extends Controller
             'saved_ids' => ['nullable', 'string'],
         ]);
 
-        $dealer = \App\Models\Dealer::current();
+        $dealer = Dealer::current();
         $email = strtolower($data['email']);
         $existing = Customer::query()->where('email', $email)->first();
 
@@ -84,6 +94,7 @@ class CustomerAuthController extends Controller
         Auth::login($customer);
         $request->session()->regenerate();
         $this->merge($request, $customer);
+        $this->mailer->welcome($customer);
 
         return redirect()->route('account');
     }

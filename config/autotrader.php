@@ -14,8 +14,15 @@ return [
     */
     'webhook_hash' => env('AUTOTRADER_WEBHOOK_HASH', 'hmac-sha256'),
     'environment' => env('AUTOTRADER_ENVIRONMENT', 'sandbox'),
+    /*
+    | Sandbox credentials expire on a date Autotrader gives you.
+    | Store it here so the dealer overview can warn before access drops.
+    | Example: 2026-12-31
+    */
+    'sandbox_expires_at' => env('AUTOTRADER_SANDBOX_EXPIRES_AT'),
     'page_size' => (int) env('AUTOTRADER_PAGE_SIZE', 20),
     'timeout' => (int) env('AUTOTRADER_TIMEOUT', 20),
+    'baseline_refresh_hours' => (int) env('AUTOTRADER_BASELINE_REFRESH_HOURS', 12),
 
     'paths' => [
         'authenticate' => '/authenticate',

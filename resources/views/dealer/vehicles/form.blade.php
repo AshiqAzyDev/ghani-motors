@@ -1,7 +1,9 @@
 @extends('layouts.dealer')
 @section('title', $car->exists ? 'Edit vehicle' : 'Add manual car')
 @section('content')
-<h1>{{ $car->exists ? $car->title() : 'Add a manual car' }}</h1>
+@if ($car->exists)
+    <p class="page-note">{{ $car->registration }} · {{ $car->title() }}</p>
+@endif
 @if ($car->exists && $car->source === 'manual')
     <p>Manual cars stay off the public website. Reserved and sold come from bookings and sales.</p>
 @endif
@@ -47,7 +49,12 @@
     </div>
     <label>Internal notes</label>
     <textarea name="internal_notes">{{ old('internal_notes', $car->internal_notes) }}</textarea>
-    @if (auth('staff')->user()->canMutate())
+    @if (auth('staff')->user()->can('vehicles.feature'))
+        <label class="check"><input type="checkbox" name="featured" value="1" @checked(old('featured', $car->featured))> Featured on the homepage</label>
+    @elseif ($car->featured)
+        <p class="meta">This car is featured on the homepage.</p>
+    @endif
+    @if (auth('staff')->user()->can('vehicles.edit_manual'))
         <button class="btn" type="submit" style="margin-top:1rem;">Save</button>
     @else
         <p>Your role can view this car but cannot change it.</p>

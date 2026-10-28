@@ -6,10 +6,16 @@
         <div class="crumb"><a href="{{ route('home') }}">Home</a> / About us</div>
         <div class="eyebrow">Good cars. Real people.</div>
         <h2>A family business.<br>An AA Approved Dealer.</h2>
-        <p>Based in {{ $dealer->city }}, Ghani Motors is a family-run, AA Approved Dealer focused on quality used cars and a friendly, straightforward buying experience.</p>
-        <p>{{ $dealer->address_line }}, {{ $dealer->city }} {{ $dealer->postcode }}</p>
-        @if ($dealer->whatsappNumber())
-            <p><a class="textlink" href="tel:+{{ $dealer->whatsappNumber() }}">{{ $dealer->phone }}</a></p>
+        <p>Based in {{ $dealer->city ?: 'Dagenham' }}, {{ $dealer->displayName() }} is a family-run, AA Approved Dealer focused on quality used cars and a friendly, straightforward buying experience.</p>
+        <p>{{ $dealer->showroomAddress() }}</p>
+        @if ($dealer->opening_hours)
+            <p>{{ $dealer->opening_hours }}</p>
+        @endif
+        @if ($dealer->phone)
+            <p><a class="textlink" href="tel:{{ preg_replace('/\s+/', '', $dealer->phone) }}">{{ $dealer->phone }}</a></p>
+        @endif
+        @if ($dealer->publicEmail())
+            <p><a class="textlink" href="mailto:{{ $dealer->publicEmail() }}">{{ $dealer->publicEmail() }}</a></p>
         @endif
     </div>
     <div>

@@ -11,5 +11,6 @@
         <label>Confirm password</label><input type="password" name="password_confirmation" required>
         <button class="btn" type="submit" style="margin-top:1rem;">Update password</button>
     </form>
+    <p style="margin-top:1rem;"><a class="textlink" href="{{ route('login') }}">← Back to log in</a></p>
 </div></section>
 @endsection

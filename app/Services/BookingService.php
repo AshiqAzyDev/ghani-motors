@@ -6,12 +6,18 @@ use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\StaffUser;
 use App\Models\Vehicle;
+use App\Services\Mail\GhaniMailer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class BookingService
 {
-    public function __construct(private VehicleStatus $status, private CustomerDirectory $directory) {}
+    public function __construct(
+        private VehicleStatus $status,
+        private CustomerDirectory $directory,
+        private GhaniMailer $mailer,
+        private AppNotifier $notifier,
+    ) {}
 
     public function reserve(Vehicle $vehicle, Customer $customer, string $date, ?string $notes, ?StaffUser $staff = null): Booking
     {
@@ -76,15 +82,7 @@ class BookingService
 
     public function transition(Booking $booking, string $to, StaffUser $staff): Booking
     {
-        $allowed = match ($booking->type) {
-            'reservation' => $booking->status === 'held' ? ['cancelled', 'completed'] : [],
-            'viewing', 'test_drive' => match ($booking->status) {
-                'requested' => ['confirmed', 'cancelled'],
-                'confirmed' => ['completed', 'cancelled'],
-                default => [],
-            },
-            default => [],
-        };
+        $allowed = $booking->nextStatuses();
 
         if (! in_array($to, $allowed, true)) {
             throw ValidationException::withMessages([
@@ -92,7 +90,7 @@ class BookingService
             ]);
         }
 
-        return DB::transaction(function () use ($booking, $to, $staff) {
+        $booking = DB::transaction(function () use ($booking, $to, $staff) {
             $booking->status = $to;
             $booking->updated_by = $staff->id;
             $booking->save();
@@ -115,5 +113,23 @@ class BookingService
 
             return $booking;
         });
+
+        try {
+            $booking->loadMissing(['customer', 'vehicle.dealer']);
+            if ($booking->customer && $booking->vehicle) {
+                $this->mailer->bookingUpdated($booking->customer, $booking, $booking->vehicle);
+                $this->notifier->notifyCustomer(
+                    $booking->customer,
+                    'booking.updated',
+                    'Booking '.$to.': '.$booking->vehicle->title(),
+                    ucfirst(str_replace('_', ' ', $booking->type)),
+                    route('account')
+                );
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        return $booking;
     }
 }

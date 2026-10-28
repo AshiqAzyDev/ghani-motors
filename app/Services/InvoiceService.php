@@ -11,16 +11,25 @@ use App\Models\InvoicePayment;
 use App\Models\Sale;
 use App\Models\StaffUser;
 use App\Models\Vehicle;
+use App\Services\Mail\GhaniMailer;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
-    public function __construct(private VehicleStatus $status, private CustomerDirectory $directory) {}
+    public function __construct(
+        private VehicleStatus $status,
+        private CustomerDirectory $directory,
+        private GhaniMailer $mailer,
+        private AppNotifier $notifier,
+    ) {}
 
     public function completeSale(Dealer $dealer, Vehicle $vehicle, Customer $customer, array $data, StaffUser $staff): Sale
     {
-        return DB::transaction(function () use ($dealer, $vehicle, $customer, $data, $staff) {
+        $affected = [];
+
+        $sale = DB::transaction(function () use ($dealer, $vehicle, $customer, $data, $staff, &$affected) {
             $vehicle = Vehicle::query()->where('dealer_id', $dealer->id)->lockForUpdate()->findOrFail($vehicle->id);
 
             $held = Booking::query()
@@ -61,6 +70,13 @@ class InvoiceService
                 ->where('status', 'held')
                 ->update(['status' => 'completed', 'updated_by' => $staff->id]);
 
+            $affected = Booking::query()
+                ->where('vehicle_id', $vehicle->id)
+                ->whereIn('type', ['test_drive', 'viewing'])
+                ->whereIn('status', ['requested', 'confirmed'])
+                ->with('customer')
+                ->get();
+
             Booking::query()
                 ->where('vehicle_id', $vehicle->id)
                 ->whereIn('type', ['test_drive', 'viewing'])
@@ -77,6 +93,21 @@ class InvoiceService
 
             return $sale;
         });
+
+        $this->mailer->saleCompleted($customer, $sale, $vehicle, $dealer);
+        $this->notifier->notifyStaff($dealer, 'sale.completed', 'Sale completed: '.$vehicle->title(), $customer->name, route('dealer.sales'));
+        $this->notifier->notifyCustomer($customer, 'sale.completed', 'Sale complete: '.$vehicle->title(), null, route('account'));
+        foreach ($affected as $booking) {
+            if ($booking->customer && (int) $booking->customer_id !== (int) $customer->id) {
+                $this->mailer->carUnavailable(
+                    $booking->customer,
+                    $vehicle,
+                    'This car is no longer available because it has been sold.'
+                );
+            }
+        }
+
+        return $sale;
     }
 
     public function createInvoice(Dealer $dealer, array $data, array $lines, StaffUser $staff): Invoice
@@ -132,6 +163,17 @@ class InvoiceService
         $invoice->issued_at = now();
         $invoice->save();
         $this->directory->log($staff->id, null, $invoice->customer_id, 'Invoice '.$invoice->number.' issued');
+        $invoice->loadMissing('customer');
+        if ($invoice->customer) {
+            $this->mailer->invoiceIssued($invoice->customer, $invoice);
+            $this->notifier->notifyCustomer(
+                $invoice->customer,
+                'invoice.issued',
+                ($invoice->kind === 'credit_note' ? 'Credit note' : 'Invoice').' '.$invoice->number,
+                null,
+                route('account')
+            );
+        }
     }
 
     public function addPayment(Invoice $invoice, int $amount, string $date, string $method, string $reference, StaffUser $staff): void
@@ -146,7 +188,7 @@ class InvoiceService
             throw ValidationException::withMessages(['amount' => 'That payment is more than the balance.']);
         }
 
-        InvoicePayment::query()->create([
+        $payment = InvoicePayment::query()->create([
             'invoice_id' => $invoice->id,
             'amount_pence' => $amount,
             'received_on' => $date,
@@ -159,6 +201,17 @@ class InvoiceService
         $invoice->status = $balance <= 0 ? 'paid' : 'part_paid';
         $invoice->save();
         $this->directory->log($staff->id, null, $invoice->customer_id, 'Payment recorded on '.$invoice->number);
+        $invoice->loadMissing('customer');
+        if ($invoice->customer) {
+            $this->mailer->paymentReceived($invoice->customer, $invoice, $payment);
+            $this->notifier->notifyCustomer(
+                $invoice->customer,
+                'invoice.payment',
+                'Payment received for '.$invoice->number,
+                null,
+                route('account')
+            );
+        }
     }
 
     public function void(Invoice $invoice, StaffUser $staff): void
@@ -173,6 +226,10 @@ class InvoiceService
         $invoice->voided_at = now();
         $invoice->save();
         $this->directory->log($staff->id, null, $invoice->customer_id, 'Invoice '.$invoice->number.' voided');
+        $invoice->loadMissing('customer');
+        if ($invoice->customer) {
+            $this->mailer->invoiceVoided($invoice->customer, $invoice);
+        }
     }
 
     public function credit(Dealer $dealer, Invoice $invoice, StaffUser $staff): Invoice
@@ -184,7 +241,7 @@ class InvoiceService
             throw ValidationException::withMessages(['status' => 'A credit note already exists.']);
         }
 
-        return DB::transaction(function () use ($dealer, $invoice, $staff) {
+        $credit = DB::transaction(function () use ($dealer, $invoice, $staff) {
             $credit = Invoice::query()->create([
                 'number' => $this->directory->nextInvoiceNumber($dealer),
                 'kind' => 'credit_note',
@@ -223,6 +280,13 @@ class InvoiceService
 
             return $credit;
         });
+
+        $credit->loadMissing('customer');
+        if ($credit->customer) {
+            $this->mailer->invoiceIssued($credit->customer, $credit);
+        }
+
+        return $credit;
     }
 
     private function customerSnapshot(Customer $customer): array
@@ -253,7 +317,7 @@ class InvoiceService
             if ($quantity <= 0) {
                 $quantity = 1;
             }
-            $unit = \App\Support\Money::poundsToPence($line['amount'] ?? 0);
+            $unit = Money::poundsToPence($line['amount'] ?? 0);
             $sign = in_array($line['line_type'] ?? '', ['part_exchange', 'discount'], true) ? -1 : 1;
             $unit *= $sign;
 

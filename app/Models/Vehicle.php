@@ -17,6 +17,7 @@ class Vehicle extends Model
     {
         return [
             'show_on_website' => 'boolean',
+            'featured' => 'boolean',
             'retail_adverts' => 'array',
             'mot_expiry' => 'date',
             'first_registration_on' => 'date',

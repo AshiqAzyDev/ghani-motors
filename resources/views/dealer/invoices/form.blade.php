@@ -1,7 +1,6 @@
 @extends('layouts.dealer')
 @section('title', 'New invoice')
 @section('content')
-<h1>New invoice</h1>
 <form class="panel" method="post" action="{{ route('dealer.invoices.store') }}">
     @csrf
     <div class="row">

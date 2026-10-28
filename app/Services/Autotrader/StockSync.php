@@ -16,12 +16,18 @@ use App\Models\VehiclePayload;
 use App\Models\VehiclePriceHistory;
 use App\Models\VehicleTaxonomyFetch;
 use App\Models\WebhookEvent;
+use App\Services\AppNotifier;
+use App\Services\Mail\GhaniMailer;
 use App\Services\VehicleStatus;
 use Illuminate\Support\Str;
 
 class StockSync
 {
-    public function __construct(private VehicleStatus $status) {}
+    public function __construct(
+        private VehicleStatus $status,
+        private GhaniMailer $mailer,
+        private AppNotifier $notifier,
+    ) {}
 
     public function baseline(Dealer $dealer, ?int $staffId = null): SyncRun
     {
@@ -106,6 +112,19 @@ class StockSync
             $run->error = $exception->getMessage();
             $run->finished_at = now();
             $run->save();
+            $this->mailer->syncFailure(
+                $dealer,
+                'Autotrader stock sync failed',
+                'Baseline sync failed: '.$exception->getMessage()
+            );
+            $this->notifier->notifyStaff(
+                $dealer,
+                'sync.failure',
+                'Autotrader stock sync failed',
+                $exception->getMessage(),
+                route('dealer.settings'),
+                ['admin']
+            );
             throw $exception;
         }
 
@@ -182,6 +201,19 @@ class StockSync
             $finish('applied', null, $vehicle?->id);
         } catch (\Throwable $exception) {
             $finish('failed', mb_substr($exception->getMessage(), 0, 255), $existing?->id);
+            $this->mailer->syncFailure(
+                $dealer,
+                'Autotrader webhook update failed',
+                'Stock '.$event->stock_id.' could not be updated: '.$exception->getMessage()
+            );
+            $this->notifier->notifyStaff(
+                $dealer,
+                'sync.failure',
+                'Autotrader webhook update failed',
+                'Stock '.$event->stock_id.': '.$exception->getMessage(),
+                route('dealer.settings'),
+                ['admin']
+            );
         }
     }
 
@@ -237,6 +269,19 @@ class StockSync
             $run->error = $exception->getMessage();
             $run->finished_at = now();
             $run->save();
+            $this->mailer->syncFailure(
+                $dealer,
+                'Autotrader advertisers refresh failed',
+                'Advertisers API refresh failed: '.$exception->getMessage()
+            );
+            $this->notifier->notifyStaff(
+                $dealer,
+                'sync.failure',
+                'Autotrader advertisers refresh failed',
+                $exception->getMessage(),
+                route('dealer.settings'),
+                ['admin']
+            );
             throw $exception;
         }
 

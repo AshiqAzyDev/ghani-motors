@@ -20,8 +20,19 @@ class InvoiceController extends Controller
             ->whereHas('customer', fn ($q) => $q->where('dealer_id', $dealerId))
             ->with('customer')
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $term = '%'.$request->string('q').'%';
+                $q->where(function ($q) use ($term) {
+                    $q->where('number', 'like', $term)
+                        ->orWhere('vehicle_label', 'like', $term)
+                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', $term)->orWhere('email', 'like', $term));
+                });
+            })
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->date('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->date('to')))
             ->latest('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('dealer.invoices.index', compact('rows'));
     }
@@ -60,15 +71,18 @@ class InvoiceController extends Controller
     public function show(Request $request, Invoice $invoice)
     {
         $this->owns($request, $invoice);
-        $invoice->load(['lines', 'payments', 'customer', 'related']);
+        $invoice->load(['lines', 'payments', 'customer', 'related', 'creator']);
 
-        return view('dealer.invoices.show', compact('invoice'));
+        return view('dealer.invoices.show', [
+            'invoice' => $invoice,
+            'dealer' => $request->user('staff')->dealer,
+        ]);
     }
 
     public function print(Request $request, Invoice $invoice)
     {
         $this->owns($request, $invoice);
-        $invoice->load(['lines', 'payments']);
+        $invoice->load(['lines', 'payments', 'creator']);
 
         return view('dealer.invoices.print', [
             'invoice' => $invoice,

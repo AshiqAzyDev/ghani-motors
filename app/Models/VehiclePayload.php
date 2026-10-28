@@ -8,7 +8,8 @@ class VehiclePayload extends Model
 {
     protected $table = 'vehicle_payloads';
 
-    public const UPDATED_AT = null;
+    // Table has fetched_at only — no created_at / updated_at columns.
+    public $timestamps = false;
 
     protected $guarded = [];
 

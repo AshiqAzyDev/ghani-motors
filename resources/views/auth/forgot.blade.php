@@ -9,12 +9,14 @@
             @if (!empty($debugLink))
                 <p>Local link: <a href="{{ $debugLink }}">set a new password</a></p>
             @endif
+            <p style="margin-top:1rem;"><a class="textlink" href="{{ route('login') }}">← Back to log in</a></p>
         @else
             <form method="post" action="{{ route('password.email') }}">
                 @csrf
                 <label>Email</label><input type="email" name="email" required value="{{ old('email') }}">
                 <button class="btn" type="submit" style="margin-top:1rem;">Send reset link</button>
             </form>
+            <p style="margin-top:1rem;"><a class="textlink" href="{{ route('login') }}">← Back to log in</a></p>
         @endif
     </div>
 </div></section>

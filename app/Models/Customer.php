@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\CustomerResetPassword;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,11 @@ class Customer extends Authenticatable implements CanResetPasswordContract
     public function getAuthPasswordName(): string
     {
         return 'password_hash';
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new CustomerResetPassword($token));
     }
 
     public function dealer(): BelongsTo

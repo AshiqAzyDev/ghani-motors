@@ -5,6 +5,10 @@ use App\Models\Dealer;
 use App\Models\Integration;
 use App\Services\Autotrader\StockSync;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('mail:booking-reminders')->dailyAt('09:00');
+Schedule::command('mail:lead-digest')->dailyAt('08:00');
 
 Artisan::command('autotrader:baseline {--dealer=1}', function (StockSync $sync) {
     $dealer = Dealer::query()->findOrFail((int) $this->option('dealer'));

@@ -33,4 +33,9 @@ class Sale extends Model
     {
         return $this->hasOne(Invoice::class);
     }
+
+    public function partExchangeValuation(): BelongsTo
+    {
+        return $this->belongsTo(Valuation::class, 'part_exchange_valuation_id');
+    }
 }

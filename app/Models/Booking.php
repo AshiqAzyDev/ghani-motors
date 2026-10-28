@@ -25,4 +25,20 @@ class Booking extends Model
     {
         return $this->belongsTo(Customer::class);
     }
+
+    /**
+     * @return list<string>
+     */
+    public function nextStatuses(): array
+    {
+        return match ($this->type) {
+            'reservation' => $this->status === 'held' ? ['cancelled', 'completed'] : [],
+            'viewing', 'test_drive' => match ($this->status) {
+                'requested' => ['confirmed', 'cancelled'],
+                'confirmed' => ['completed', 'cancelled'],
+                default => [],
+            },
+            default => [],
+        };
+    }
 }

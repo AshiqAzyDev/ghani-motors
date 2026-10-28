@@ -48,6 +48,11 @@ class Invoice extends Model
         return $this->belongsTo(self::class, 'related_invoice_id');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(StaffUser::class, 'created_by');
+    }
+
     public function paidPence(): int
     {
         return (int) $this->payments()->sum('amount_pence');

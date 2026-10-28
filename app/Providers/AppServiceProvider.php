@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
             return "<?php echo e(\\App\\Support\\Money::gbp($expression)); ?>";
         });
 
-        View::composer(['layouts.site', 'layouts.dealer'], function ($view): void {
+        View::composer(['layouts.site', 'auth.*'], function ($view): void {
             try {
                 $host = request()->getHost();
                 $dealer = Dealer::query()->where('website_host', $host)->first()
@@ -31,6 +31,20 @@ class AppServiceProvider extends ServiceProvider
                 $dealer = null;
             }
             $view->with('siteDealer', $dealer);
+        });
+
+        View::composer(['layouts.dealer'], function ($view): void {
+            $staff = null;
+            $dealer = null;
+            try {
+                $staff = auth('staff')->user();
+                $dealer = $staff?->dealer
+                    ?? Dealer::query()->orderBy('id')->first();
+            } catch (\Throwable) {
+                $dealer = null;
+            }
+            $view->with('siteDealer', $dealer);
+            $view->with('dealerStaff', $staff);
         });
     }
 }

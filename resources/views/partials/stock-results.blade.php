@@ -16,12 +16,12 @@
 @endif
 @if ($cars->hasPages())
     <nav class="stock-pager" aria-label="Pagination">
-        <p>Showing <b>{{ $cars->firstItem() }}–{{ $cars->lastItem() }}</b> of <b>{{ $cars->total() }}</b></p>
+        <p>Showing <b>{{ $cars->firstItem() }}–{{ $cars->lastItem() }}</b> of <b>{{ $cars->total() }}</b> cars in {{ $dealer->city ?? 'Dagenham' }}</p>
         <div>
             @if ($cars->onFirstPage())
-                <span class="stock-page-step is-disabled">Previous</span>
+                <span class="stock-page-step is-disabled">Prev</span>
             @else
-                <a class="stock-page-step" href="{{ $cars->previousPageUrl() }}">Previous</a>
+                <a class="stock-page-step" href="{{ $cars->previousPageUrl() }}">Prev</a>
             @endif
             @foreach ($cars->getUrlRange(max(1, $cars->currentPage() - 2), min($cars->lastPage(), $cars->currentPage() + 2)) as $page => $url)
                 @if ($page === $cars->currentPage())

@@ -1,5 +1,14 @@
 @php
     $image = $car->images->first();
+    $photos = $car->images->count();
+    $price = $car->publicPricePence();
+    $pounds = $price !== null ? intdiv($price, 100) : null;
+    $monthly = null;
+    if ($pounds !== null) {
+        $rate = 0.129 / 12;
+        $payment = ($pounds * 0.9) * $rate / (1 - pow(1 + $rate, -48));
+        $monthly = is_finite($payment) ? (int) round($payment) : null;
+    }
 @endphp
 <article class="car home-car">
     <div class="carpic">
@@ -9,6 +18,9 @@
             @endif
         </a>
         <span class="tag">{{ ucfirst($car->website_status) }}</span>
+        @if ($photos > 0)
+            <span class="home-car-photos">{{ $photos }} {{ \Illuminate\Support\Str::plural('photo', $photos) }}</span>
+        @endif
         @auth
             <form method="post" action="{{ route('cars.save', $car->slug) }}">
                 @csrf
@@ -30,7 +42,10 @@
         <div class="price">
             <div>
                 <small class="cashlabel">Cash price</small>
-                <strong>@gbp($car->publicPricePence())</strong>
+                <strong>@gbp($price)</strong>
+                @if ($monthly)
+                    <small class="home-car-month">or <b>£{{ number_format($monthly) }}/mo</b> · illustration</small>
+                @endif
             </div>
             <a href="{{ route('cars.show', $car->slug) }}">View car ↗</a>
         </div>

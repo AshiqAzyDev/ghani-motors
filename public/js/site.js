@@ -120,20 +120,49 @@ document.addEventListener('submit', (event) => {
     });
 });
 
-document.querySelector('[data-enquiry-open]')?.addEventListener('click', () => {
-  document.querySelector('#enquiry')?.showModal();
-});
-document.querySelector('[data-enquiry-close]')?.addEventListener('click', () => {
-  document.querySelector('#enquiry')?.close();
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-enquiry-open]')) {
+    document.querySelector('#enquiry')?.showModal();
+  }
+  if (event.target.closest('[data-enquiry-close]')) {
+    document.querySelector('#enquiry')?.close();
+  }
 });
 
 const filtersToggle = document.querySelector('[data-filters-toggle]');
 const filtersPanel = document.querySelector('[data-filters]');
+const activeFilterKeys = ['q', 'make', 'model', 'price', 'transmission', 'fuel', 'year', 'mileage', 'body', 'saved'];
+const countActiveFilters = (form) => {
+  if (!form) return 0;
+  let total = 0;
+  activeFilterKeys.forEach((key) => {
+    const fields = form.querySelectorAll(`[name="${key}"]`);
+    if (!fields.length) return;
+    const field = fields[0];
+    if (field.type === 'checkbox') {
+      if (field.checked) total += 1;
+      return;
+    }
+    if (field.type === 'range') {
+      if (String(field.value).trim() !== '' && Number(field.value) < Number(field.max)) total += 1;
+      return;
+    }
+    if (String(field.value || '').trim() !== '') total += 1;
+  });
+  return total;
+};
+const paintFiltersToggle = (open, form = filtersToggle?.closest('form')) => {
+  if (!filtersToggle) return;
+  const active = countActiveFilters(form);
+  const badge = active > 0 ? `<span class="stock-filter-count">${active}</span>` : '';
+  const label = open ?? filtersPanel?.classList.contains('is-open');
+  filtersToggle.innerHTML = `${label ? 'Hide filters' : 'Show filters'}${badge}`;
+  filtersToggle.setAttribute('aria-expanded', label ? 'true' : 'false');
+};
 filtersToggle?.addEventListener('click', () => {
   const open = !filtersPanel?.classList.contains('is-open');
   filtersPanel?.classList.toggle('is-open', open);
-  filtersToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  filtersToggle.textContent = open ? 'Hide filters' : 'Show filters';
+  paintFiltersToggle(open);
 });
 
 document.querySelector('.account-side-nav a.selected')?.scrollIntoView({
@@ -213,11 +242,10 @@ document.querySelectorAll('form[data-live-search]').forEach((form) => {
         target.removeAttribute('aria-busy');
         markSaved(target);
         paintApplyLabel();
-        if (closeFilters && filtersPanel && filtersToggle) {
+        if (closeFilters && filtersPanel) {
           filtersPanel.classList.remove('is-open');
-          filtersToggle.setAttribute('aria-expanded', 'false');
-          filtersToggle.textContent = 'Show filters';
         }
+        paintFiltersToggle(filtersPanel?.classList.contains('is-open') ?? false, form);
       });
   };
 
@@ -405,4 +433,65 @@ document.querySelector('[data-add-line]')?.addEventListener('click', () => {
   const copy = row.cloneNode(true);
   copy.querySelectorAll('input').forEach((input) => { input.value = ''; });
   row.parentElement.appendChild(copy);
+});
+
+document.querySelectorAll('form[data-home-search]').forEach((form) => {
+  const getChipFieldValue = (field) => {
+    if (field === 'body') {
+      return form.querySelector('select[name="body"]')?.value || '';
+    }
+    return form.querySelector(`[data-home-chip-field="${field}"]`)?.value || '';
+  };
+
+  const setChipField = (field, value) => {
+    if (field === 'body') {
+      const body = form.querySelector('select[name="body"]');
+      if (body) body.value = value;
+      return;
+    }
+    const input = form.querySelector(`[data-home-chip-field="${field}"]`);
+    if (input) input.value = value;
+  };
+
+  const clearChipField = (field, value) => {
+    if (field === 'body') {
+      const body = form.querySelector('select[name="body"]');
+      if (body && body.value === value) body.value = '';
+      return;
+    }
+    const input = form.querySelector(`[data-home-chip-field="${field}"]`);
+    if (input && input.value === value) input.value = '';
+  };
+
+  const syncChipsFromForm = () => {
+    form.querySelectorAll('[data-home-chip]').forEach((chip) => {
+      const field = chip.dataset.field;
+      const value = chip.dataset.value || '';
+      chip.classList.toggle('is-active', value !== '' && getChipFieldValue(field) === value);
+    });
+  };
+
+  form.querySelectorAll('[data-home-chip]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const field = chip.dataset.field;
+      const value = chip.dataset.value || '';
+      const currentlyActive = value !== '' && getChipFieldValue(field) === value;
+      if (currentlyActive) {
+        clearChipField(field, value);
+      } else {
+        form.querySelectorAll(`[data-home-chip][data-field="${field}"]`).forEach((other) => {
+          if (other === chip) return;
+          other.classList.remove('is-active');
+        });
+        setChipField(field, value);
+      }
+      syncChipsFromForm();
+    });
+  });
+
+  form.querySelector('select[name="body"]')?.addEventListener('change', () => {
+    syncChipsFromForm();
+  });
+
+  syncChipsFromForm();
 });

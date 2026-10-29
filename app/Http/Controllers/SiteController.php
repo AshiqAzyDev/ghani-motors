@@ -35,9 +35,14 @@ class SiteController extends Controller
         $dealer = Dealer::current();
         // Homepage shows featured stock only. Search/filters submit to /stock via the home form.
         $cars = $dealer->vehicles()->public()->where('featured', true)->with('images')->latest('id')->limit(12)->get();
+        $stockTotal = $dealer->vehicles()->public()->count();
 
         return view('site.home', array_merge(
-            ['dealer' => $dealer, 'cars' => $cars],
+            [
+                'dealer' => $dealer,
+                'cars' => $cars,
+                'stockTotal' => $stockTotal,
+            ],
             $this->searchChoices($dealer->vehicles()->public())
         ));
     }
@@ -50,7 +55,7 @@ class SiteController extends Controller
         $public = $dealer->vehicles()->public();
         $cars = $this->filtered($request, $dealer)->paginate(12)->withQueryString();
         if ($fragment) {
-            return view('partials.stock-results', compact('cars'));
+            return view('partials.stock-results', compact('cars', 'dealer'));
         }
 
         return view('site.stock', array_merge(

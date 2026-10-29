@@ -41,7 +41,7 @@
                 <a href="{{ route('account') }}" @class(['nav-account', 'active' => request()->routeIs('account') || request()->routeIs('account.*')])>My account</a>
                 <form class="nav-logout" method="post" action="{{ route('logout') }}">@csrf<button type="submit">Log out</button></form>
             @else
-                <a href="{{ route('register') }}">Create account</a>
+                {{-- <a href="{{ route('register') }}">Create account</a> --}}
                 <a class="nav-login" href="{{ route('login') }}">Log in</a>
             @endauth
         </nav>

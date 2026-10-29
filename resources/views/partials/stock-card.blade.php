@@ -2,7 +2,7 @@
     $price = $car->publicPricePence();
     $pounds = $price !== null ? intdiv($price, 100) : null;
     $monthly = null;
-    if ($pounds) {
+    if ($pounds !== null) {
         $rate = 0.129 / 12;
         $payment = ($pounds * 0.9) * $rate / (1 - pow(1 + $rate, -48));
         $monthly = is_finite($payment) ? (int) round($payment) : null;
@@ -17,6 +17,12 @@
     }
     $image = $car->images->first();
     $photos = $car->images->count();
+    $milesFull = $car->mileage !== null ? number_format((int) $car->mileage) : '—';
+    $milesShort = $car->mileage !== null
+        ? (abs((int) $car->mileage) >= 1000
+            ? number_format((int) round(((int) $car->mileage) / 1000)).'k'
+            : number_format((int) $car->mileage))
+        : '—';
 @endphp
 <article @class(['stock-card', 'is-featured' => $car->featured])>
     <div>
@@ -33,9 +39,14 @@
                     <span class="stock-featured">Featured</span>
                 @endif
             </span>
-            @if ($photos > 0)
-                <span class="stock-photos">{{ $photos }} {{ \Illuminate\Support\Str::plural('photo', $photos) }}</span>
-            @endif
+            <span class="stock-media-meta">
+                @if ($plate !== '')
+                    <span class="stock-reg-pill">Reg {{ $plate }}</span>
+                @endif
+                @if ($photos > 0)
+                    <span class="stock-photos">1 / {{ $photos }}</span>
+                @endif
+            </span>
         </a>
         @auth
             <form method="post" action="{{ route('cars.save', $car->slug) }}">
@@ -58,7 +69,7 @@
             <p>{{ $car->trim ?: $car->attention_grabber }}</p>
             <dl>
                 <div><dt>Year</dt><dd>{{ $car->year ?: '—' }}</dd></div>
-                <div><dt>Mileage</dt><dd>{{ $car->mileage ? number_format($car->mileage) : '—' }}</dd></div>
+                <div><dt>Mileage</dt><dd><span class="stock-miles-full">{{ $milesFull }}</span><span class="stock-miles-short">{{ $milesShort }}</span></dd></div>
                 <div><dt>Gearbox</dt><dd>{{ $gear !== '' ? $gear : '—' }}</dd></div>
                 <div><dt>Fuel</dt><dd>{{ $car->fuel ?: '—' }}</dd></div>
             </dl>
@@ -72,8 +83,8 @@
             </div>
             @if ($monthly)
                 <div>
-                    <b>£{{ number_format($monthly) }}/mo</b>
-                    <small title="Assumed 12.9% APR over 48 months with a 10% deposit. An illustration, not a finance quote.">Illustration · 10% deposit</small>
+                    <b>£{{ number_format($monthly) }} <span class="stock-mo">/mo</span></b>
+                    <small title="Assumed 12.9% APR over 48 months with a 10% deposit. An illustration, not a finance quote.">Illustration · 10% dep</small>
                 </div>
             @endif
         </div>

@@ -13,6 +13,15 @@
     $mileageOptions = $mileageOptions->unique()->sort()->values();
     $phone = $dealer->whatsappNumber();
     $address = trim(implode(', ', array_filter([$dealer->address_line, $dealer->city, $dealer->postcode])));
+    $place = $address !== '' ? $address : 'Rainham Road South, Dagenham RM10 8YT';
+    $hasAutomatic = $transmissions->contains(fn ($value) => str_contains(strtolower((string) $value), 'automatic'));
+    $automaticValue = $transmissions->first(fn ($value) => str_contains(strtolower((string) $value), 'automatic')) ?? 'Automatic';
+    $hasSuv = $bodies->contains(fn ($value) => str_contains(strtolower((string) $value), 'suv'));
+    $suvValue = $bodies->first(fn ($value) => str_contains(strtolower((string) $value), 'suv')) ?? 'SUV';
+    $activeFilters = collect(['q', 'make', 'model', 'price', 'transmission', 'fuel', 'year', 'mileage', 'body', 'saved'])
+        ->filter(fn ($key) => request()->filled($key))
+        ->count();
+    $isAll = $activeFilters === 0;
 @endphp
 <div class="stock-page">
     <nav class="stock-crumb" aria-label="Breadcrumb">
@@ -22,25 +31,38 @@
         </a>
         <span>/</span>
         <b>Used cars</b>
+        <span class="stock-crumb-extra">/</span>
+        <span class="stock-crumb-extra">{{ $dealer->city ?? 'Dagenham' }} Forecourt</span>
     </nav>
 
     <section class="stock-hero">
-        <div class="stock-kicker"><i></i> Ghani Motors forecourt</div>
+        <div class="stock-kicker"><i></i> Ghani Motors Forecourt · {{ $dealer->city ?? 'Dagenham' }}</div>
         <h1>Find a car that fits your life.</h1>
-        <p>Your budget. Your priorities. Your next set of keys. Search the cars in stock at our Dagenham showroom.</p>
-        <div class="stock-chips">
-            <span>Popular</span>
-            @if ($transmissions->contains('Automatic') && $bodies->contains('Hatchback'))
-                <a href="{{ route('stock', ['transmission' => 'Automatic', 'body' => 'Hatchback']) }}">Automatic hatchbacks</a>
-            @endif
+        <p>Your budget. Your priorities. <strong>{{ number_format($stockTotal) }} inspected vehicles</strong> ready to drive away today.</p>
+        <form class="stock-quick-search" method="get" action="{{ route('stock') }}" role="search">
+            <label class="visually-hidden" for="stock-quick-q">Search used cars</label>
+            <span class="stock-quick-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M16 16l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </span>
+            <input id="stock-quick-q" type="search" name="q" value="{{ request('q') }}" placeholder="Search make, model, or reg (e.g. BMW, Fiesta)...">
+            <button type="submit">Search</button>
+        </form>
+        <div class="stock-chips" aria-label="Quick filters">
+            <a @class(['is-active' => $isAll]) href="{{ route('stock') }}">All ({{ number_format($stockTotal) }})</a>
             @if ($priceCeiling >= 5000)
-                <a href="{{ route('stock', ['price' => 5000]) }}">Under £5,000</a>
+                <a @class(['is-active' => (int) request('price') === 5000]) href="{{ route('stock', ['price' => 5000]) }}">Under £5,000</a>
+            @endif
+            @if ($priceCeiling >= 10000)
+                <a @class(['is-active' => (int) request('price') === 10000]) href="{{ route('stock', ['price' => 10000]) }}">Under £10,000</a>
+            @endif
+            @if ($hasAutomatic)
+                <a @class(['is-active' => request('transmission') === $automaticValue]) href="{{ route('stock', ['transmission' => $automaticValue]) }}">Automatic</a>
+            @endif
+            @if ($hasSuv)
+                <a @class(['is-active' => request('body') === $suvValue]) href="{{ route('stock', ['body' => $suvValue]) }}">SUVs</a>
             @endif
             @if ($mileageOptions->isNotEmpty())
-                <a href="{{ route('stock', ['mileage' => 60000]) }}">Under 60,000 miles</a>
-            @endif
-            @if ($bodies->contains('SUV'))
-                <a href="{{ route('stock', ['body' => 'SUV']) }}">SUVs</a>
+                <a @class(['is-active' => (int) request('mileage') === 60000]) href="{{ route('stock', ['mileage' => 60000]) }}">Low Mileage</a>
             @endif
         </div>
     </section>
@@ -50,31 +72,36 @@
             <span class="stock-trust-icon amber">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.2-2.8 7.4-7 9-4.2-1.6-7-4.8-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="1.8"></path><path d="M8.5 12.2l2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
             </span>
-            <div><b>AA Approved Dealer</b><small>Sold from this forecourt</small></div>
+            <div><b>AA Approved</b><small>Forecourt Standards</small></div>
         </div>
         <div>
             <span class="stock-trust-icon teal">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.2-2.8 7.4-7 9-4.2-1.6-7-4.8-7-9V6l7-3z" fill="currentColor"></path></svg>
             </span>
-            <div><b>3-month warranty</b><small>Included with the car</small></div>
+            <div><b>3-Mo Warranty</b><small>Included on all cars</small></div>
         </div>
         <div>
             <span class="stock-trust-icon sky">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16h16M6 16l1.2-4.2A2 2 0 019.1 10h5.8a2 2 0 011.9 1.8L18 16M7 16v2M17 16v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
             </span>
-            <div><b>12-month breakdown cover</b><small>Included with the car</small></div>
+            <div><b>12-Mo Roadside</b><small>AA Breakdown cover</small></div>
         </div>
         <div>
             <span class="stock-trust-icon slate">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
             </span>
-            <div><b>HPI checked</b><small>Checked before the car is advertised</small></div>
+            <div><b>100% HPI Clear</b><small>Verified History</small></div>
         </div>
     </section>
 
     <div class="stock-layout">
         <form class="stock-search" method="get" action="{{ route('stock') }}" data-live-search="#stock-results">
-            <button class="stock-filter-toggle" type="button" data-filters-toggle aria-expanded="false" aria-controls="stock-filters">Show filters</button>
+            <button class="stock-filter-toggle" type="button" data-filters-toggle aria-expanded="false" aria-controls="stock-filters">
+                Show filters
+                @if ($activeFilters > 0)
+                    <span class="stock-filter-count">{{ $activeFilters }}</span>
+                @endif
+            </button>
             <aside id="stock-filters" class="stock-filters" data-filters>
                 <div class="stock-filters-head">
                     <h2>
@@ -214,15 +241,23 @@
             @include('partials.stock-results')
         </div>
 
-        <section class="stock-visit">
-            <div>
-                <b>Visit the Dagenham forecourt</b>
-                <p>{{ $address !== '' ? $address : 'Rainham Road South, Dagenham RM10 8YT' }}</p>
-            </div>
-            <div>
-                @if ($phone)
-                    <a href="tel:+{{ $phone }}">Call the dealership</a>
+        <section class="stock-visit stock-forecourt-card">
+            <div class="stock-forecourt-copy">
+                <span class="stock-forecourt-kicker">Visit Forecourt</span>
+                <b>Visit Ghani Motors {{ $dealer->city ?? 'Dagenham' }}</b>
+                <p>{{ $place }}</p>
+                @if ($dealer->opening_hours)
+                    <div class="stock-forecourt-hours">
+                        <span>Opening hours</span>
+                        <strong>{{ $dealer->opening_hours }}</strong>
+                    </div>
                 @endif
+            </div>
+            <div class="stock-forecourt-actions">
+                @if ($phone)
+                    <a class="stock-forecourt-call" href="tel:+{{ $phone }}">Call Dealership</a>
+                @endif
+                <a class="stock-forecourt-directions" href="https://www.google.com/maps/dir/?api=1&destination={{ rawurlencode($place) }}" target="_blank" rel="noopener">Get Directions</a>
                 <button type="button" data-enquiry-open>Send an enquiry</button>
             </div>
         </section>

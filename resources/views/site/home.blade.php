@@ -1,5 +1,8 @@
 @extends('layouts.site')
 @section('title', 'Used cars in Dagenham')
+@push('head')
+    <link rel="preload" as="image" href="{{ asset('images/hero.webp') }}" type="image/webp">
+@endpush
 @section('content')
 @php
     $place = trim(($dealer->address_line ?? 'Rainham Road South').', '.($dealer->city ?? 'Dagenham').', '.($dealer->postcode ?? 'RM10 8YT'));
@@ -13,7 +16,10 @@
 @endphp
 <div class="home-page">
     <section class="home-hero">
-        <img src="{{ asset('images/hero.jpg') }}" alt="Car on an open road">
+        <picture>
+            <source srcset="{{ asset('images/hero.webp') }}" type="image/webp">
+            <img src="{{ asset('images/hero.jpg') }}" alt="Car on an open road" width="1800" height="1200" fetchpriority="high" decoding="sync">
+        </picture>
         <div class="home-hero-shade"></div>
         <div class="home-hero-copy">
             <div class="home-approval">
@@ -260,5 +266,12 @@
             <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination={{ rawurlencode($place) }}" target="_blank" rel="noopener">Get directions</a>
         </div>
     </section>
+
+    <div class="home-section home-reviews-wrap">
+        @include('partials.google-reviews', [
+            'dealer' => $dealer,
+            'mapsUrl' => 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($place),
+        ])
+    </div>
 </div>
 @endsection

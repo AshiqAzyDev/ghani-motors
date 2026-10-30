@@ -20,6 +20,8 @@ class StaffPermissions
         'invoices.manage',
         'settings.view',
         'settings.manage',
+        'policies.view',
+        'policies.manage',
         'sync.run',
         'staff.manage',
     ];
@@ -42,6 +44,8 @@ class StaffPermissions
             'invoices.manage' => 'Create and manage invoices',
             'settings.view' => 'View website settings',
             'settings.manage' => 'Edit website settings',
+            'policies.view' => 'View compliance policies',
+            'policies.manage' => 'Manage compliance policies',
             'sync.run' => 'Run Autotrader baseline sync',
             'staff.manage' => 'Manage staff and permissions',
         ];
@@ -87,6 +91,8 @@ class StaffPermissions
         return [
             'settings.view',
             'settings.manage',
+            'policies.view',
+            'policies.manage',
         ];
     }
 
@@ -110,6 +116,7 @@ class StaffPermissions
             'dealer.leads' => 'leads.view',
             'dealer.sales' => 'sales.view',
             'dealer.invoices' => 'invoices.view',
+            'dealer.policies' => 'policies.view',
             'dealer.settings' => 'settings.view',
             'dealer.staff' => 'staff.manage',
         ];

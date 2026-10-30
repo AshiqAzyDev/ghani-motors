@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
 use App\Models\Booking;
+use App\Models\CompliancePolicy;
 use App\Models\Dealer;
 use App\Models\Invoice;
 use App\Models\Lead;
@@ -19,6 +20,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class SiteController extends Controller
@@ -207,7 +209,7 @@ class SiteController extends Controller
             'preferred_contact' => ['required', 'in:phone,email'],
             'accepted_terms' => ['accepted'],
             'photos' => ['nullable', 'array', 'max:8'],
-            'photos.*' => ['image', 'max:5120'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         $customer = $request->user() ?? $this->directory->findOrCreate(
@@ -268,6 +270,9 @@ class SiteController extends Controller
     public function financeEnquiry(Request $request)
     {
         $dealer = Dealer::current();
+        $request->validate([
+            'car' => ['nullable', 'string', 'max:160', 'alpha_dash'],
+        ]);
         $data = $this->contact($request);
         $car = $request->filled('car')
             ? $dealer->vehicles()->public()->where('slug', $request->string('car'))->first()
@@ -290,7 +295,22 @@ class SiteController extends Controller
 
     public function about()
     {
-        return view('site.about', ['dealer' => Dealer::current()]);
+        $dealer = Dealer::current();
+        $policies = $dealer->compliancePolicies()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('site.about', compact('dealer', 'policies'));
+    }
+
+    public function downloadCompliancePolicy(CompliancePolicy $policy)
+    {
+        $dealer = Dealer::current();
+        abort_unless((int) $policy->dealer_id === (int) $dealer->id, 404);
+        abort_unless(Storage::disk('public')->exists($policy->pdf_path), 404);
+
+        return Storage::disk('public')->download($policy->pdf_path, $policy->downloadName());
     }
 
     public function privacy()
@@ -417,7 +437,7 @@ class SiteController extends Controller
         $customer = $request->user();
         $data = $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
         if (! Hash::check($data['current_password'], $customer->password_hash)) {
             throw ValidationException::withMessages(['current_password' => 'Current password is incorrect.']);
@@ -434,6 +454,15 @@ class SiteController extends Controller
         $this->directory->removeSaved($customer, $vehicle->id);
 
         return redirect()->route('account', 'saved')->with('status', 'Removed from saved cars.');
+    }
+
+    public function robots()
+    {
+        $body = "User-agent: *\nDisallow:\n\nSitemap: ".url('/sitemap.xml')."\n";
+
+        return response($body, 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
     }
 
     public function sitemap()

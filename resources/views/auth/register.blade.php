@@ -8,9 +8,9 @@
     @if ($siteDealer?->faviconUrl())
         <link rel="icon" href="{{ $siteDealer->faviconUrl() }}">
     @endif
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('fonts/site-fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/site.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/upgrades.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/upgrades.min.css') }}">
 </head>
 <body class="auth-body customer-auth" data-saved="{{ implode(',', session('saved_vehicle_ids', [])) }}">
 <main class="auth-shell">
@@ -60,6 +60,6 @@
         </form>
     </section>
 </main>
-<script src="{{ asset('js/site.js') }}"></script>
+<script src="{{ asset('js/site.min.js') }}" defer></script>
 </body>
 </html>

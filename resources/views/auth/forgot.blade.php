@@ -6,9 +6,6 @@
         <h1>Reset password</h1>
         @if (!empty($sent))
             <p>If that email has an account, a reset link has been sent.</p>
-            @if (!empty($debugLink))
-                <p>Local link: <a href="{{ $debugLink }}">set a new password</a></p>
-            @endif
             <p style="margin-top:1rem;"><a class="textlink" href="{{ route('login') }}">← Back to log in</a></p>
         @else
             <form method="post" action="{{ route('password.email') }}">

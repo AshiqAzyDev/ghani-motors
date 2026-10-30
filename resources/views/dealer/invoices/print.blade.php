@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <title>{{ $invoice->number }} | {{ $dealer->displayName() }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-    {{-- upgrades only: site.css public header/nav/h1 rules break print layout --}}
-    <link rel="stylesheet" href="{{ asset('css/upgrades.css') }}">
+    <link rel="stylesheet" href="{{ asset('fonts/site-fonts.css') }}">
+    {{-- dealer-upgrades only: site.css public header/nav/h1 rules break print layout --}}
+    <link rel="stylesheet" href="{{ asset('css/dealer-upgrades.min.css') }}">
     <style>
         :root {
             --ink: #101b22;

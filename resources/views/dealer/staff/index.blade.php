@@ -1,6 +1,7 @@
 @extends('layouts.dealer')
 @section('title', 'Staff')
 @section('content')
+@php($canAssignAdmin = $canAssignAdmin ?? false)
 <p class="page-note">Invite staff and control what each person can do in the dealer workspace.</p>
 
 <section class="panel" data-staff-perms data-presets='@json($permissionPresets)'>
@@ -13,7 +14,9 @@
             <select name="role" data-role-preset>
                 <option value="sales" @selected(old('role', 'sales') === 'sales')>Sales</option>
                 <option value="viewer" @selected(old('role') === 'viewer')>Viewer</option>
-                <option value="admin" @selected(old('role') === 'admin')>Admin</option>
+                @if ($canAssignAdmin)
+                    <option value="admin" @selected(old('role') === 'admin')>Admin</option>
+                @endif
             </select>
         </div>
         <div class="perm-grid" data-perm-grid @style(['display: none' => old('role') === 'admin'])>
@@ -27,6 +30,7 @@
 </section>
 
 @foreach ($rows as $member)
+    @php($editableRoles = $canAssignAdmin || $member->role === 'admin' ? ['admin', 'sales', 'viewer'] : ['sales', 'viewer'])
     <section class="panel" style="margin-top:1rem;" data-staff-perms data-presets='@json($permissionPresets)'>
         <h2>{{ $member->name }} <small class="meta">{{ $member->email }} · {{ $member->role }} · {{ $member->is_active ? 'active' : 'inactive' }}</small></h2>
         <form method="post" action="{{ route('dealer.staff.update', $member) }}">
@@ -34,12 +38,16 @@
             @method('PUT')
             <div class="row">
                 <input name="name" value="{{ old('name', $member->name) }}" required>
-                <select name="role" data-role-preset>
-                    @foreach (['admin','sales','viewer'] as $role)
+                <select name="role" data-role-preset @disabled(! $canAssignAdmin && $member->role === 'admin')>
+                    @foreach ($editableRoles as $role)
                         <option value="{{ $role }}" @selected(old('role', $member->role) === $role)>{{ ucfirst($role) }}</option>
                     @endforeach
                 </select>
-                <label class="check-inline"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $member->is_active))> Active</label>
+                @if (! $canAssignAdmin && $member->role === 'admin')
+                    <input type="hidden" name="role" value="admin">
+                @endif
+                <input type="hidden" name="is_active" value="0">
+                <label class="check-inline"><input type="checkbox" name="is_active" value="1" @checked((string) old('is_active', $member->is_active ? '1' : '0') === '1')> Active</label>
             </div>
             <div class="perm-grid" data-perm-grid @style(['display: none' => old('role', $member->role) === 'admin'])>
                 @foreach ($permissionLabels as $key => $label)

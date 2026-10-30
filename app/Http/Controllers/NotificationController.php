@@ -25,7 +25,7 @@ class NotificationController extends Controller
         return response()->json([
             'count' => $this->notifier->unreadCount('staff', $staff->id),
             'items' => $this->notifier->unreadFor('staff', $staff->id)->map(fn (AppNotification $n) => [
-                'id' => $n->id,
+                'id' => (int) $n->id,
                 'title' => $n->title,
                 'body' => $n->body,
                 'url' => $n->url,

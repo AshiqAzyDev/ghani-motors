@@ -32,6 +32,7 @@ class StaffController extends Controller
             'rows' => $rows,
             'permissionLabels' => StaffPermissions::assignableLabels(),
             'permissionPresets' => StaffPermissions::presets(),
+            'canAssignAdmin' => $staff->isAdmin(),
         ]);
     }
 
@@ -43,10 +44,12 @@ class StaffController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:255', 'unique:staff_users,email'],
-            'role' => ['required', Rule::in(['admin', 'sales', 'viewer'])],
+            'role' => ['required', Rule::in($this->assignableRoles($actor))],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(array_keys(StaffPermissions::assignableLabels()))],
         ]);
+
+        $this->assertCanAssignAdminRole($actor, $data['role']);
 
         $chosen = array_values(array_diff($data['permissions'] ?? [], StaffPermissions::adminOnly()));
         $permissions = $data['role'] === 'admin'
@@ -54,6 +57,7 @@ class StaffController extends Controller
             : ($chosen !== [] ? $chosen : StaffPermissions::preset($data['role']));
 
         $user = StaffUser::query()->create([
+
             'dealer_id' => $actor->dealer_id,
             'name' => $data['name'],
             'email' => strtolower($data['email']),
@@ -82,19 +86,26 @@ class StaffController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'role' => ['required', Rule::in(['admin', 'sales', 'viewer'])],
+            'role' => ['required', Rule::in($this->assignableRoles($actor, $member))],
             'is_active' => ['nullable', 'boolean'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::in(array_keys(StaffPermissions::assignableLabels()))],
         ]);
 
+        $this->assertCanAssignAdminRole($actor, $data['role'], $member);
+
         if ((int) $member->id === (int) $actor->id && $data['role'] !== 'admin') {
             throw ValidationException::withMessages(['role' => 'You cannot remove your own admin role.']);
         }
 
+        $isActive = $request->boolean('is_active');
+        if ((int) $member->id === (int) $actor->id && ! $isActive) {
+            throw ValidationException::withMessages(['is_active' => 'You cannot deactivate your own account.']);
+        }
+
         $member->name = $data['name'];
         $member->role = $data['role'];
-        $member->is_active = $request->boolean('is_active', true);
+        $member->is_active = $isActive;
         $chosen = array_values(array_diff($data['permissions'] ?? [], StaffPermissions::adminOnly()));
         $member->permissions = $data['role'] === 'admin'
             ? null
@@ -119,5 +130,37 @@ class StaffController extends Controller
         $this->mailer->staffInvite($member->loadMissing('dealer'), $url);
 
         return back()->with('status', 'Invite resent to '.$member->email.'.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function assignableRoles(StaffUser $actor, ?StaffUser $member = null): array
+    {
+        if ($actor->isAdmin()) {
+            return ['admin', 'sales', 'viewer'];
+        }
+
+        $roles = ['sales', 'viewer'];
+        if ($member && $member->role === 'admin') {
+            $roles[] = 'admin';
+        }
+
+        return $roles;
+    }
+
+    private function assertCanAssignAdminRole(StaffUser $actor, string $role, ?StaffUser $member = null): void
+    {
+        if ($role !== 'admin' || $actor->isAdmin()) {
+            return;
+        }
+
+        if ($member && $member->role === 'admin') {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'role' => 'Only admins can assign the admin role.',
+        ]);
     }
 }

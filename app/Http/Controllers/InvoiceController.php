@@ -56,11 +56,15 @@ class InvoiceController extends Controller
             'vehicle_label' => ['nullable', 'string', 'max:180'],
             'vat_scheme' => ['required', 'in:standard,margin,exempt,zero_rated'],
             'prices_include_vat' => ['nullable', 'boolean'],
-            'lines' => ['required', 'array'],
+            'lines' => ['required', 'array', 'min:1'],
             'lines.*.line_type' => ['nullable', 'in:vehicle,extra,part_exchange,fee,discount'],
-            'lines.*.description' => ['nullable', 'string', 'max:255'],
-            'lines.*.quantity' => ['nullable', 'numeric', 'min:0'],
-            'lines.*.amount' => ['nullable', 'numeric'],
+            'lines.*.description' => ['required', 'string', 'max:255'],
+            'lines.*.quantity' => ['required', 'numeric', 'min:0'],
+            'lines.*.amount' => ['required', 'numeric'],
+        ], [
+            'lines.min' => 'Add at least one invoice line.',
+            'lines.*.description.required' => 'Each line needs a description.',
+            'lines.*.amount.required' => 'Each line needs an amount.',
         ]);
         $data['prices_include_vat'] = $request->boolean('prices_include_vat');
         $invoice = $this->invoices->createInvoice($staff->dealer, $data, $data['lines'], $staff);

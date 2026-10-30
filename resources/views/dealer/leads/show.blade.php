@@ -52,17 +52,17 @@
     <section class="panel">
         <h2>Status &amp; notes</h2>
         @if (auth('staff')->user()->can('leads.manage'))
-            <form method="post" action="{{ route('dealer.leads.update', $lead) }}">
+            <form method="post" action="{{ route('dealer.leads.update', $lead) }}" data-lead-update data-has-contact-notes="{{ filled($lead->contact_notes) ? '1' : '0' }}">
                 @csrf
                 <label>Status
-                    <select name="status">
+                    <select name="status" data-lead-status>
                         @foreach (['new','contacted','closed'] as $status)
                             <option value="{{ $status }}" @selected(old('status', $lead->status) === $status)>{{ ucfirst($status) }}</option>
                         @endforeach
                     </select>
                 </label>
                 <label>Contact notes
-                    <textarea name="contact_notes" rows="4" placeholder="What you discussed and the next step">{{ old('contact_notes', $lead->contact_notes) }}</textarea>
+                    <textarea name="contact_notes" data-lead-contact-notes rows="4" placeholder="What you discussed and the next step" @required(old('status', $lead->status) === 'contacted' && ! filled($lead->contact_notes))>{{ old('contact_notes', $lead->contact_notes) }}</textarea>
                 </label>
                 <label>Additional notes
                     <textarea name="additional_notes" rows="4" placeholder="Delivery, finance band, part exchange, other points">{{ old('additional_notes', $lead->additional_notes) }}</textarea>

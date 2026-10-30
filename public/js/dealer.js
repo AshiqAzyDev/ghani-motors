@@ -11,17 +11,40 @@
       const count = Number(payload.count || 0);
       countEl.hidden = count < 1;
       countEl.textContent = count > 99 ? '99+' : String(count);
+      list.replaceChildren();
       if (!payload.items || !payload.items.length) {
-        list.innerHTML = '<p class="meta">No unread notifications.</p>';
+        const empty = document.createElement('p');
+        empty.className = 'meta';
+        empty.textContent = 'No unread notifications.';
+        list.appendChild(empty);
         return;
       }
-      list.innerHTML = payload.items.map((item) => `
-      <a class="notify-item" href="/dealer/notifications/${item.id}/read">
-        <b>${item.title}</b>
-        ${item.body ? `<span>${item.body}</span>` : ''}
-        <small>${item.created_at || ''}</small>
-      </a>
-    `).join('');
+      payload.items.forEach((item) => {
+        const id = Number(item.id);
+        if (!Number.isInteger(id) || id < 1) {
+          return;
+        }
+
+        const link = document.createElement('a');
+        link.className = 'notify-item';
+        link.href = `/dealer/notifications/${id}/read`;
+
+        const title = document.createElement('b');
+        title.textContent = item.title || '';
+        link.appendChild(title);
+
+        if (item.body) {
+          const body = document.createElement('span');
+          body.textContent = item.body;
+          link.appendChild(body);
+        }
+
+        const when = document.createElement('small');
+        when.textContent = item.created_at || '';
+        link.appendChild(when);
+
+        list.appendChild(link);
+      });
     };
 
     const refresh = () => fetch(url, { headers: { Accept: 'application/json' } })
@@ -77,6 +100,30 @@
     };
 
     select.addEventListener('change', applyRole);
+  });
+
+  document.querySelectorAll('[data-booking-create]').forEach((form) => {
+    const type = form.querySelector('[data-booking-type]');
+    const time = form.querySelector('[data-booking-time]');
+    if (!type || !time) return;
+    const sync = () => {
+      const needsTime = type.value !== 'reservation';
+      time.required = needsTime;
+    };
+    type.addEventListener('change', sync);
+    sync();
+  });
+
+  document.querySelectorAll('[data-lead-update]').forEach((form) => {
+    const status = form.querySelector('[data-lead-status]');
+    const notes = form.querySelector('[data-lead-contact-notes]');
+    if (!status || !notes) return;
+    const hasNotes = form.dataset.hasContactNotes === '1';
+    const sync = () => {
+      notes.required = status.value === 'contacted' && !hasNotes;
+    };
+    status.addEventListener('change', sync);
+    sync();
   });
 
   document.querySelector('.dealer-nav a.selected')?.scrollIntoView({

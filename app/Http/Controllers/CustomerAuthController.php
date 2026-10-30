@@ -9,7 +9,9 @@ use App\Services\CustomerDirectory;
 use App\Services\Mail\GhaniMailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class CustomerAuthController extends Controller
@@ -38,6 +40,11 @@ class CustomerAuthController extends Controller
         ]);
 
         if (! Auth::attempt(['email' => strtolower($data['email']), 'password' => $data['password']], false)) {
+            Log::warning('Customer login failed', [
+                'email' => strtolower($data['email']),
+                'ip' => $request->ip(),
+            ]);
+
             throw ValidationException::withMessages(['email' => 'Those details do not match an account.']);
         }
 
@@ -58,7 +65,7 @@ class CustomerAuthController extends Controller
             'name' => ['required', 'string', 'max:160'],
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:40'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
             'accepted_terms' => ['accepted'],
             'saved_ids' => ['nullable', 'string'],
         ]);
@@ -116,17 +123,14 @@ class CustomerAuthController extends Controller
     {
         $data = $request->validate(['email' => ['required', 'email']]);
         $customer = Customer::query()->where('email', strtolower($data['email']))->first();
-        $link = null;
 
         if ($customer) {
             $token = Password::broker('customers')->createToken($customer);
-            $link = route('password.reset', ['token' => $token, 'email' => $customer->email]);
             $customer->sendPasswordResetNotification($token);
         }
 
         return view('auth.forgot', [
             'sent' => true,
-            'debugLink' => config('app.debug') ? $link : null,
         ]);
     }
 
@@ -140,7 +144,7 @@ class CustomerAuthController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
 
         $status = Password::broker('customers')->reset(

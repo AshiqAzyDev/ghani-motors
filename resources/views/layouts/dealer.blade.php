@@ -8,10 +8,10 @@
     @if ($siteDealer?->faviconUrl())
         <link rel="icon" href="{{ $siteDealer->faviconUrl() }}">
     @endif
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('fonts/site-fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/site.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/upgrades.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/upgrades.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dealer-upgrades.min.css') }}">
 </head>
 <body class="dealer-mode">
 @php
@@ -23,6 +23,7 @@
         'dealer.leads' => 'Leads',
         'dealer.sales' => 'Sales records',
         'dealer.invoices' => 'Invoices',
+        'dealer.policies' => 'Policies',
         'dealer.staff' => 'Staff',
         'dealer.settings' => 'Settings',
     ];
@@ -43,7 +44,7 @@
                 @foreach ($nav as $route => $label)
                     @php($need = $permMap[$route] ?? null)
                     @if (! $need || ($dealerStaff && $dealerStaff->can($need)))
-                        <a href="{{ route($route) }}" @class(['selected' => request()->routeIs($route) || request()->routeIs(str_replace('.home', '', $route).'.*') || ($route === 'dealer.leads' && request()->routeIs('dealer.leads.*')) || ($route === 'dealer.customers' && request()->routeIs('dealer.customers.*')) || ($route === 'dealer.staff' && request()->routeIs('dealer.staff.*')) || ($route === 'dealer.invoices' && request()->routeIs('dealer.invoices.*')) || ($route === 'dealer.vehicles' && request()->routeIs('dealer.vehicles.*'))])>{{ $label }}</a>
+                        <a href="{{ route($route) }}" @class(['selected' => request()->routeIs($route) || request()->routeIs(str_replace('.home', '', $route).'.*') || ($route === 'dealer.leads' && request()->routeIs('dealer.leads.*')) || ($route === 'dealer.customers' && request()->routeIs('dealer.customers.*')) || ($route === 'dealer.staff' && request()->routeIs('dealer.staff.*')) || ($route === 'dealer.invoices' && request()->routeIs('dealer.invoices.*')) || ($route === 'dealer.policies' && request()->routeIs('dealer.policies.*')) || ($route === 'dealer.vehicles' && request()->routeIs('dealer.vehicles.*'))])>{{ $label }}</a>
                     @endif
                 @endforeach
             </nav>

@@ -16,7 +16,7 @@ class RefreshAutotraderStock
     {
         $response = $next($request);
 
-        if ($this->shouldRefresh($request)) {
+        if ($this->shouldRefresh($request) && Dealer::query()->exists()) {
             $this->refresh->kick(Dealer::current());
         }
 

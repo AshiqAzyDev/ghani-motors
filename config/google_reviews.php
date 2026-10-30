@@ -1,0 +1,60 @@
+<?php
+
+return [
+    'eyebrow' => 'Google reviews',
+    'title' => 'What buyers say about us.',
+    'rating' => 4.9,
+    'count' => 16,
+    'label' => 'EXCELLENT',
+    'headline' => 'Rated 4.9/5 on Google — trusted by car buyers across Dagenham and Essex.',
+    'reviews' => [
+        [
+            'name' => 'Ola',
+            'initial' => 'O',
+            'color' => '#4285f4',
+            'when' => '1 year ago',
+            'stars' => 5,
+            'quote' => 'Good and fair',
+        ],
+        [
+            'name' => 'Justin',
+            'initial' => 'J',
+            'color' => '#ea4335',
+            'when' => '1 year ago',
+            'stars' => 5,
+            'quote' => 'Had a very positive experience, bought my new 2013 Ford B-Max from these guys. Great car, great price, low mileage, 3 months warranty. Really pleased with it. I’ve had a few queries and they were quick to respond. Thanks guys.',
+        ],
+        [
+            'name' => 'Gemma',
+            'initial' => 'G',
+            'color' => '#fbbc05',
+            'when' => '1 year ago',
+            'stars' => 5,
+            'quote' => 'I recently purchased a car from Ghani Motors, and the entire experience exceeded my expectations. From the moment I walked into the showroom, the staff was welcoming, knowledgeable, and eager to assist without being pushy. They took the time to understand my needs and provided several options that fit both my budget and preferences.',
+        ],
+        [
+            'name' => 'Sam',
+            'initial' => 'S',
+            'color' => '#34a853',
+            'when' => 'a year ago',
+            'stars' => 5,
+            'quote' => 'Great experience from start to finish. Finance was approved fast, paperwork was smooth, and the car was exactly as described. Honest and reliable dealer.',
+        ],
+        [
+            'name' => 'Aisha',
+            'initial' => 'A',
+            'color' => '#9c27b0',
+            'when' => '8 months ago',
+            'stars' => 5,
+            'quote' => 'The staff was knowledgeable and friendly, patiently guiding me through the options without any pressure. The entire process was smooth, transparent and surprisingly quick. Highly recommend.',
+        ],
+        [
+            'name' => 'Daniel',
+            'initial' => 'D',
+            'color' => '#00acc1',
+            'when' => '6 months ago',
+            'stars' => 5,
+            'quote' => 'Great service. Sent me a detailed video of the car and delivered it to me. Car was as described and more importantly it looked the same as in the photos and video.',
+        ],
+    ],
+];

@@ -1,6 +1,9 @@
 @extends('layouts.site')
 @section('title', 'Stock')
 @section('description', 'Search used cars at Ghani Motors in Dagenham.')
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/stock-car-upgrades.min.css') }}">
+@endpush
 @section('content')
 @php
     $priceCeiling = (int) (collect($prices)->last() ?? 0);

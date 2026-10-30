@@ -23,7 +23,7 @@
                 <h2>Your car details</h2>
                 <p>Let’s start with the essentials.</p>
                 <div class="formgrid">
-                    <label class="full">Vehicle registration<input class="reg" name="registration" required maxlength="9" value="{{ old('registration') }}" placeholder="AB12 CDE"></label>
+                    <label class="full">Vehicle registration<input class="reg" name="registration" required maxlength="16" value="{{ old('registration') }}" placeholder="AB12 CDE"></label>
                     <label>Current mileage<input type="number" name="mileage" required min="0" value="{{ old('mileage') }}"></label>
                     <label>Make<input name="make" required value="{{ old('make') }}"></label>
                     <label>Model<input name="model" required value="{{ old('model') }}"></label>
@@ -55,7 +55,8 @@
                     </label>
                     <label>MOT expiry<input type="date" name="mot_expiry" value="{{ old('mot_expiry') }}"></label>
                     <label class="full">Notes<textarea name="notes">{{ old('notes') }}</textarea></label>
-                    <label class="full">Photos<input type="file" name="photos[]" accept="image/*" multiple></label>
+                    <label class="full">Photos<input type="file" name="photos[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple></label>
+                    <p class="meta">JPG, PNG or WebP only — up to 8 photos.</p>
                 </div>
                 <div class="formactions"><button class="btn outline" type="button" data-back>Back</button><button class="btn" type="button" data-next>Continue</button></div>
             </fieldset>

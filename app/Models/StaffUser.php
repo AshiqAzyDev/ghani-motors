@@ -65,6 +65,7 @@ class StaffUser extends Authenticatable implements CanResetPasswordContract
             || $this->can('vehicles.edit_manual')
             || $this->can('vehicles.feature')
             || $this->can('settings.manage')
+            || $this->can('policies.manage')
             || $this->can('sync.run')
             || $this->can('staff.manage');
     }

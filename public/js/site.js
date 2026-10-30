@@ -129,6 +129,76 @@ document.addEventListener('click', (event) => {
   }
 });
 
+(() => {
+  const dock = document.querySelector('.dock');
+  if (!dock) return;
+
+  const labels = () => [...dock.querySelectorAll('.dock-fab-label')];
+
+  const relativeLuminance = (r, g, b) => {
+    const channel = (value) => {
+      const s = value / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  };
+
+  const opaqueBackground = (node) => {
+    if (!node || node.nodeType !== 1) return null;
+    const style = getComputedStyle(node);
+    const color = style.backgroundColor;
+    if (!color || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
+      return null;
+    }
+    const parts = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
+    if (!parts) return null;
+    const alpha = parts[4] === undefined ? 1 : Number(parts[4]);
+    if (alpha < 0.35) return null;
+    return [Number(parts[1]), Number(parts[2]), Number(parts[3])];
+  };
+
+  const sampleBackground = (label) => {
+    const rect = label.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - 1, Math.max(0, rect.left + rect.width / 2));
+    const y = Math.min(window.innerHeight - 1, Math.max(0, rect.top + rect.height / 2));
+    const hit = document.elementsFromPoint(x, y).find((el) => !el.closest?.('.dock')) || document.body;
+    let node = hit;
+
+    while (node && node !== document.documentElement) {
+      const rgb = opaqueBackground(node);
+      if (rgb) return rgb;
+      if (getComputedStyle(node).backgroundImage !== 'none') {
+        return [16, 28, 35];
+      }
+      node = node.parentElement;
+    }
+
+    return opaqueBackground(document.body) || [255, 255, 255];
+  };
+
+  const syncDockLabelContrast = () => {
+    labels().forEach((label) => {
+      const [r, g, b] = sampleBackground(label);
+      const onDark = relativeLuminance(r, g, b) < 0.45;
+      label.classList.toggle('is-on-dark', onDark);
+      label.classList.toggle('is-on-light', !onDark);
+    });
+  };
+
+  let frame = 0;
+  const schedule = () => {
+    if (frame) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = 0;
+      syncDockLabelContrast();
+    });
+  };
+
+  syncDockLabelContrast();
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
+})();
+
 const filtersToggle = document.querySelector('[data-filters-toggle]');
 const filtersPanel = document.querySelector('[data-filters]');
 const activeFilterKeys = ['q', 'make', 'model', 'price', 'transmission', 'fuel', 'year', 'mileage', 'body', 'saved'];
@@ -494,4 +564,57 @@ document.querySelectorAll('form[data-home-search]').forEach((form) => {
   });
 
   syncChipsFromForm();
+});
+
+document.querySelectorAll('[data-google-reviews]').forEach((widget) => {
+  const track = widget.querySelector('[data-reviews-track]');
+  const prev = widget.querySelector('[data-reviews-prev]');
+  const next = widget.querySelector('[data-reviews-next]');
+  if (!track) {
+    return;
+  }
+
+  const step = () => {
+    const card = track.querySelector('[data-review-card]');
+    if (!card) {
+      return track.clientWidth * 0.8;
+    }
+    const styles = window.getComputedStyle(track);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0;
+    return card.getBoundingClientRect().width + gap;
+  };
+
+  const syncNav = () => {
+    const max = Math.max(0, track.scrollWidth - track.clientWidth - 2);
+    if (prev) {
+      prev.hidden = track.scrollLeft <= 2;
+    }
+    if (next) {
+      next.hidden = track.scrollLeft >= max;
+    }
+  };
+
+  prev?.addEventListener('click', () => {
+    track.scrollBy({ left: -step(), behavior: 'smooth' });
+  });
+  next?.addEventListener('click', () => {
+    track.scrollBy({ left: step(), behavior: 'smooth' });
+  });
+  track.addEventListener('scroll', syncNav, { passive: true });
+  window.addEventListener('resize', syncNav);
+  syncNav();
+
+  widget.querySelectorAll('[data-review-more]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const card = button.closest('[data-review-card]');
+      const quote = card?.querySelector('[data-review-quote]');
+      if (!quote) {
+        return;
+      }
+      const expanded = button.dataset.expanded === '1';
+      quote.textContent = expanded ? quote.dataset.preview : quote.dataset.full;
+      button.dataset.expanded = expanded ? '0' : '1';
+      button.textContent = expanded ? 'Read more' : 'Read less';
+    });
+  });
 });

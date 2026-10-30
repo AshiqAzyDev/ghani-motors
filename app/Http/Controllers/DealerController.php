@@ -33,9 +33,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class DealerController extends Controller
@@ -82,7 +85,7 @@ class DealerController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
 
         $status = Password::broker('staff')->reset(
@@ -112,6 +115,11 @@ class DealerController extends Controller
             'password' => ['required', 'string'],
         ]);
         if (! Auth::guard('staff')->attempt(['email' => strtolower($data['email']), 'password' => $data['password']])) {
+            Log::warning('Staff login failed', [
+                'email' => strtolower($data['email']),
+                'ip' => $request->ip(),
+            ]);
+
             throw ValidationException::withMessages(['email' => 'Those staff details were not recognised.']);
         }
         if (! $request->user('staff')->is_active) {
@@ -264,44 +272,6 @@ class DealerController extends Controller
         return view('dealer.settings', compact('dealer', 'autotrader', 'lastSync', 'blocks', 'failedHooks', 'syncRuns', 'webhookEvents', 'migrationStatus'));
     }
 
-    public function migrateDatabase(Request $request)
-    {
-        $staff = $request->user('staff');
-        abort_unless($staff->can('settings.manage'), 403);
-
-        try {
-            $result = $this->migrations->runPendingMigrations();
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            return redirect()
-                ->route('dealer.settings')
-                ->withErrors(['migrate' => $exception->getMessage()])
-                ->with('migration_output', $exception->getMessage());
-        }
-
-        if (! ($result['ran'] ?? false)) {
-            return redirect()
-                ->route('dealer.settings')
-                ->with('status', 'Database is already up to date. Existing data was not changed.');
-        }
-
-        $this->directory->log($staff->id, null, null, 'Pending database migrations applied');
-
-        $message = 'Pending migrations completed. Existing tables were kept; only missing columns (if any) were added.';
-        $after = $result['status'] ?? [];
-        if (($after['state'] ?? '') === 'up_to_date') {
-            $message .= ' Schema is now up to date.';
-        } elseif (($after['pending'] ?? []) !== []) {
-            $message .= ' Some migrations may still be pending — review the output below.';
-        }
-
-        return redirect()
-            ->route('dealer.settings')
-            ->with('status', $message)
-            ->with('migration_output', (string) ($result['output'] ?? ''));
-    }
-
     public function updateSettings(Request $request)
     {
         $staff = $request->user('staff');
@@ -319,10 +289,13 @@ class DealerController extends Controller
             'postcode' => ['nullable', 'string', 'max:16'],
             'opening_hours' => ['nullable', 'string', 'max:255'],
             'website_host' => ['nullable', 'string', 'max:255'],
-            'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
-            'favicon' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,ico,svg', 'max:512'],
+            'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'favicon' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,ico', 'max:512'],
             'remove_logo' => ['nullable', 'boolean'],
             'remove_favicon' => ['nullable', 'boolean'],
+        ], [
+            'logo.mimes' => 'The logo must be a PNG, JPG, or WebP image. SVG files are not supported.',
+            'favicon.mimes' => 'The favicon must be a PNG, JPG, WebP, or ICO image. SVG files are not supported.',
         ]);
 
         $dealer->fill([
@@ -592,11 +565,12 @@ class DealerController extends Controller
             'prep_cost' => ['nullable', 'numeric', 'min:0'],
             'internal_notes' => ['nullable', 'string', 'max:5000'],
             'workshop' => ['nullable', 'boolean'],
+            'featured' => ['sometimes', 'boolean'],
         ]);
         $vehicle->purchase_cost_pence = Money::poundsToPence($costs['purchase_cost'] ?? 0);
         $vehicle->prep_cost_pence = Money::poundsToPence($costs['prep_cost'] ?? 0);
         $vehicle->internal_notes = $costs['internal_notes'] ?? null;
-        if ($staff->can('vehicles.feature')) {
+        if ($staff->can('vehicles.feature') && array_key_exists('featured', $costs)) {
             $vehicle->featured = $request->boolean('featured');
         }
         if ($vehicle->source === 'autotrader' && $vehicle->local_hold !== 'reserved' && $vehicle->website_status !== 'sold') {
@@ -613,6 +587,7 @@ class DealerController extends Controller
     {
         $staff = $request->user('staff');
         abort_unless((int) $vehicle->dealer_id === (int) $staff->dealer_id, 404);
+        $request->validate(['featured' => ['sometimes', 'boolean']]);
         $vehicle->featured = $request->boolean('featured');
         $vehicle->updated_by = $staff->id;
         $vehicle->save();
@@ -662,6 +637,34 @@ class DealerController extends Controller
         }
 
         return back()->with('status', 'Baseline finished.');
+    }
+
+    public function migrateDatabase(Request $request)
+    {
+        $staff = $request->user('staff');
+        abort_unless($staff->isAdmin() && $staff->can('settings.manage'), 403);
+
+        try {
+            $result = $this->migrations->runPendingMigrations();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('dealer.settings')
+                ->withFragment('settings-database')
+                ->withErrors(['migrate' => $exception->getMessage()])
+                ->with('migration_output', $exception->getMessage());
+        }
+
+        $status = $result['ran']
+            ? 'Pending migrations applied.'
+            : 'No pending migrations.';
+
+        return redirect()
+            ->route('dealer.settings')
+            ->withFragment('settings-database')
+            ->with('status', $status)
+            ->with('migration_output', (string) ($result['output'] ?? ''));
     }
 
     public function bookings(Request $request)
@@ -867,7 +870,7 @@ class DealerController extends Controller
             'customer_id' => ['required', 'integer'],
             'type' => ['required', 'in:reservation,test_drive,viewing'],
             'preferred_on' => ['required', 'date'],
-            'preferred_time' => ['nullable', 'date_format:H:i'],
+            'preferred_time' => ['required_unless:type,reservation', 'nullable', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
         $vehicle = Vehicle::query()->where('dealer_id', $staff->dealer_id)->findOrFail($data['vehicle_id']);
@@ -879,9 +882,6 @@ class DealerController extends Controller
                 $this->mailer->reservationCustomer($customer, $booking, $vehicle);
                 $this->mailer->reservationDealer($dealer, $customer, $booking, $vehicle);
             } else {
-                if (empty($data['preferred_time'])) {
-                    throw ValidationException::withMessages(['preferred_time' => 'Choose a time.']);
-                }
                 $booking = $this->bookings->appointment($vehicle, $customer, $data['type'], $data['preferred_on'], $data['preferred_time'], $data['notes'] ?? null, $staff);
                 $this->mailer->appointmentCustomer($customer, $booking, $vehicle);
                 $this->mailer->appointmentDealer($dealer, $customer, $booking, $vehicle);
@@ -905,7 +905,9 @@ class DealerController extends Controller
     {
         $staff = $request->user('staff');
         abort_unless((int) $booking->vehicle->dealer_id === (int) $staff->dealer_id, 404);
-        $data = $request->validate(['status' => ['required', 'string']]);
+        $data = $request->validate([
+            'status' => ['required', 'string', Rule::in($booking->nextStatuses())],
+        ]);
         $this->bookings->transition($booking, $data['status'], $staff);
 
         return back()->with('status', 'Booking updated.');
@@ -974,6 +976,8 @@ class DealerController extends Controller
             'postcode' => ['nullable', 'string', 'max:16'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'source' => ['required', 'in:showroom,phone,website_enquiry,finance_enquiry,sell_your_car,other'],
+        ], [
+            'email.unique' => 'That email is already used by another customer.',
         ]);
         $customer = Customer::query()->create($data + ['dealer_id' => $staff->dealer_id]);
         $this->directory->log($staff->id, null, $customer->id, 'Customer added');
@@ -1013,15 +1017,16 @@ class DealerController extends Controller
         abort_unless((int) $lead->customer->dealer_id === (int) $staff->dealer_id, 404);
         $data = $request->validate([
             'status' => ['required', 'in:new,contacted,closed'],
-            'contact_notes' => ['nullable', 'string', 'max:5000'],
+            'contact_notes' => [
+                Rule::requiredIf(fn () => $request->input('status') === 'contacted' && ! filled($lead->contact_notes)),
+                'nullable',
+                'string',
+                'max:5000',
+            ],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
+        ], [
+            'contact_notes.required' => 'Add contact notes when marking a lead as contacted.',
         ]);
-
-        if ($data['status'] === 'contacted' && ! filled($data['contact_notes'] ?? null) && ! filled($lead->contact_notes)) {
-            throw ValidationException::withMessages([
-                'contact_notes' => 'Add contact notes when marking a lead as contacted.',
-            ]);
-        }
 
         $previous = $lead->status;
         $lead->status = $data['status'];

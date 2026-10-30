@@ -15,16 +15,21 @@
     <a class="btn smallbtn ghost" href="{{ route('dealer.bookings', array_merge(request()->except('view'), ['view' => 'calendar'])) }}">Calendar</a>
 </form>
 @if (auth('staff')->user()->can('bookings.manage'))
-<form class="panel" method="post" action="{{ route('dealer.bookings.store') }}" style="margin:1rem 0;">
+<form class="panel" method="post" action="{{ route('dealer.bookings.store') }}" style="margin:1rem 0;" data-booking-create>
     @csrf
     <div class="row">
         <select name="vehicle_id" required><option value="">Car</option>@foreach ($cars as $car)<option value="{{ $car->id }}">{{ $car->title() }} ({{ $car->website_status }})</option>@endforeach</select>
         <select name="customer_id" required><option value="">Customer</option>@foreach ($customers as $customer)<option value="{{ $customer->id }}">{{ $customer->name }}</option>@endforeach</select>
-        <select name="type"><option value="reservation">Reservation</option><option value="viewing">Viewing</option><option value="test_drive">Test drive</option></select>
-        <input type="date" name="preferred_on" required>
-        <input type="time" name="preferred_time">
+        <select name="type" data-booking-type>
+            <option value="reservation" @selected(old('type', 'reservation') === 'reservation')>Reservation</option>
+            <option value="viewing" @selected(old('type') === 'viewing')>Viewing</option>
+            <option value="test_drive" @selected(old('type') === 'test_drive')>Test drive</option>
+        </select>
+        <input type="date" name="preferred_on" required value="{{ old('preferred_on') }}">
+        <input type="time" name="preferred_time" data-booking-time value="{{ old('preferred_time') }}" @required(old('type') && old('type') !== 'reservation')>
     </div>
-    <label>Notes</label><textarea name="notes"></textarea>
+    <p class="meta" data-booking-time-hint>Time is required for viewings and test drives.</p>
+    <label>Notes</label><textarea name="notes">{{ old('notes') }}</textarea>
     <button class="btn" type="submit">Add booking</button>
 </form>
 @endif

@@ -32,16 +32,28 @@ class Dealer extends Model
         return $this->hasMany(Customer::class);
     }
 
+    public function compliancePolicies(): HasMany
+    {
+        return $this->hasMany(CompliancePolicy::class);
+    }
+
     public function whatsappNumber(): ?string
     {
         $digits = preg_replace('/\D+/', '', (string) $this->phone) ?? '';
         if ($digits === '' || in_array($digits, ['02000000000', '442000000000', '440200000000'], true)) {
             return null;
         }
+
+        // Normalise to international UK first, then validate the final length.
+        // 07907669002 (11) → 447907669002 (12); 7907669002 (10) → 447907669002 (12).
         if (str_starts_with($digits, '0')) {
             $digits = '44'.substr($digits, 1);
+        } elseif (! str_starts_with($digits, '44') && preg_match('/^7\d{9}$/', $digits) === 1) {
+            $digits = '44'.$digits;
         }
-        if (! str_starts_with($digits, '44') || strlen($digits) < 11) {
+
+        // WhatsApp expects 44 + national number without the leading 0 (12–13 digits).
+        if (preg_match('/^44\d{10,11}$/', $digits) !== 1) {
             return null;
         }
 

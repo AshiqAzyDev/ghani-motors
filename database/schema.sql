@@ -121,6 +121,21 @@ CREATE TABLE staff_users (
     FOREIGN KEY (dealer_id) REFERENCES dealers (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE compliance_policies (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  dealer_id BIGINT UNSIGNED NOT NULL,
+  name VARCHAR(160) NOT NULL,
+  pdf_path VARCHAR(255) NOT NULL,
+  original_filename VARCHAR(255) NOT NULL,
+  sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY compliance_policies_dealer_sort_index (dealer_id, sort_order, name),
+  CONSTRAINT compliance_policies_dealer_id_foreign
+    FOREIGN KEY (dealer_id) REFERENCES dealers (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------------------------------------------------------------------------
 -- Tokens, call log, blocks
 -- ---------------------------------------------------------------------------

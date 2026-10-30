@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureDealerConfigured;
 use App\Http\Middleware\RefreshAutotraderStock;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\StaffAuthenticated;
 use App\Http\Middleware\StaffCan;
 use App\Http\Middleware\StaffCanMutate;
@@ -18,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('home'));
+        $middleware->trustProxies(at: '*');
         $middleware->alias([
             'staff' => StaffAuthenticated::class,
             'staff.mutate' => StaffCanMutate::class,
@@ -26,8 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/autotrader',
         ]);
+        $middleware->web(prepend: [
+            EnsureDealerConfigured::class,
+        ]);
         $middleware->web(append: [
             RefreshAutotraderStock::class,
+            SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

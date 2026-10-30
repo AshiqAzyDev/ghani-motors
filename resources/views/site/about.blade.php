@@ -24,6 +24,25 @@
         <div class="benefit"><h3><span>03</span> A simpler changeover</h3><p>Have a car to sell? Ask us about selling or part exchanging.</p></div>
     </div>
 </section>
+
+@include('partials.google-reviews', [
+    'dealer' => $dealer,
+    'mapsUrl' => $dealer->mapsSearchUrl(),
+])
+
+@if (($policies ?? collect())->isNotEmpty())
+    <section class="section about-policies" aria-labelledby="compliance-policies-heading">
+        <div class="eyebrow">Transparency</div>
+        <h2 id="compliance-policies-heading">Compliance Policies</h2>
+        <p>Download our dealer policies for your records.</p>
+        <div class="about-policies-list">
+            @foreach ($policies as $policy)
+                <a class="btn about-policy-btn" href="{{ route('compliance-policies.download', $policy) }}">{{ $policy->name }}</a>
+            @endforeach
+        </div>
+    </section>
+@endif
+
 @include('partials.trust')
 @include('partials.map')
 @endsection

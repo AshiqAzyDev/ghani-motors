@@ -1,45 +1,52 @@
 <?php
 
+use App\Http\Controllers\CompliancePolicyController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\DealerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/setup', [SetupController::class, 'create'])->name('setup.dealer');
+Route::post('/setup', [SetupController::class, 'store'])->middleware('throttle:register')->name('setup.dealer.store');
+
 Route::get('/', [SiteController::class, 'home'])->name('home');
 Route::get('/stock', [SiteController::class, 'stock'])->name('stock');
 Route::get('/cars/{slug}', [SiteController::class, 'show'])->name('cars.show');
-Route::post('/cars/{slug}/enquiry', [SiteController::class, 'enquiry'])->name('cars.enquiry');
-Route::post('/cars/{slug}/test-drive', [SiteController::class, 'testDrive'])->name('cars.test-drive');
-Route::post('/enquire', [SiteController::class, 'generalEnquiry'])->name('enquiry.store');
+Route::post('/cars/{slug}/enquiry', [SiteController::class, 'enquiry'])->middleware('throttle:public-forms')->name('cars.enquiry');
+Route::post('/cars/{slug}/test-drive', [SiteController::class, 'testDrive'])->middleware('throttle:public-forms')->name('cars.test-drive');
+Route::post('/enquire', [SiteController::class, 'generalEnquiry'])->middleware('throttle:public-forms')->name('enquiry.store');
 Route::get('/sell', [SiteController::class, 'sell'])->name('sell');
-Route::post('/sell', [SiteController::class, 'storeSell'])->name('sell.store');
+Route::post('/sell', [SiteController::class, 'storeSell'])->middleware('throttle:public-forms')->name('sell.store');
 Route::get('/finance', [SiteController::class, 'finance'])->name('finance');
-Route::post('/finance', [SiteController::class, 'financeEnquiry'])->name('finance.store');
+Route::post('/finance', [SiteController::class, 'financeEnquiry'])->middleware('throttle:public-forms')->name('finance.store');
 Route::get('/about', [SiteController::class, 'about'])->name('about');
+Route::get('/compliance-policies/{policy}/download', [SiteController::class, 'downloadCompliancePolicy'])->name('compliance-policies.download');
 Route::get('/privacy', [SiteController::class, 'privacy'])->name('privacy');
+Route::get('/robots.txt', [SiteController::class, 'robots'])->name('robots');
 Route::get('/sitemap.xml', [SiteController::class, 'sitemap'])->name('sitemap');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [CustomerAuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [CustomerAuthController::class, 'login']);
+    Route::post('/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
     Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [CustomerAuthController::class, 'register']);
+    Route::post('/register', [CustomerAuthController::class, 'register'])->middleware('throttle:register');
     Route::get('/forgot-password', [CustomerAuthController::class, 'showForgot'])->name('password.request');
-    Route::post('/forgot-password', [CustomerAuthController::class, 'sendReset'])->name('password.email');
+    Route::post('/forgot-password', [CustomerAuthController::class, 'sendReset'])->middleware('throttle:password-email')->name('password.email');
     Route::get('/reset-password/{token}', [CustomerAuthController::class, 'showReset'])->name('password.reset');
-    Route::post('/reset-password', [CustomerAuthController::class, 'reset'])->name('password.update');
+    Route::post('/reset-password', [CustomerAuthController::class, 'reset'])->middleware('throttle:password-email')->name('password.update');
 });
 
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::post('/cars/{slug}/save', [SiteController::class, 'save'])->name('cars.save');
-    Route::post('/cars/{slug}/reserve', [SiteController::class, 'reserve'])->name('cars.reserve');
-    Route::post('/cars/{slug}/viewing', [SiteController::class, 'viewing'])->name('cars.viewing');
+    Route::post('/cars/{slug}/reserve', [SiteController::class, 'reserve'])->middleware('throttle:public-forms')->name('cars.reserve');
+    Route::post('/cars/{slug}/viewing', [SiteController::class, 'viewing'])->middleware('throttle:public-forms')->name('cars.viewing');
     Route::get('/account/{section?}', [SiteController::class, 'account'])
         ->where('section', 'overview|saved|bookings|enquiries|invoices|alerts|profile')
         ->name('account');
@@ -54,11 +61,11 @@ Route::post('/webhooks/autotrader', WebhookController::class)->name('webhooks.au
 
 Route::prefix('dealer')->group(function () {
     Route::get('/login', [DealerController::class, 'showLogin'])->name('dealer.login');
-    Route::post('/login', [DealerController::class, 'login'])->name('dealer.login.store');
+    Route::post('/login', [DealerController::class, 'login'])->middleware('throttle:login')->name('dealer.login.store');
     Route::get('/forgot-password', [DealerController::class, 'showForgotPassword'])->name('dealer.password.request');
-    Route::post('/forgot-password', [DealerController::class, 'sendResetLink'])->name('dealer.password.email');
+    Route::post('/forgot-password', [DealerController::class, 'sendResetLink'])->middleware('throttle:password-email')->name('dealer.password.email');
     Route::get('/reset-password/{token}', [DealerController::class, 'showResetPassword'])->name('dealer.password.reset');
-    Route::post('/reset-password', [DealerController::class, 'resetPassword'])->name('dealer.password.update');
+    Route::post('/reset-password', [DealerController::class, 'resetPassword'])->middleware('throttle:password-email')->name('dealer.password.update');
 
     Route::middleware('staff')->group(function () {
         Route::post('/logout', [DealerController::class, 'logout'])->name('dealer.logout');
@@ -69,6 +76,7 @@ Route::prefix('dealer')->group(function () {
         Route::post('/notifications/read-all', [NotificationController::class, 'dealerMarkAll'])->name('dealer.notifications.read-all');
 
         Route::get('/settings', [DealerController::class, 'settings'])->middleware('staff.can:settings.view')->name('dealer.settings');
+        Route::get('/policies', [CompliancePolicyController::class, 'index'])->middleware('staff.can:policies.view')->name('dealer.policies');
         Route::get('/vehicles', [DealerController::class, 'vehicles'])->middleware('staff.can:vehicles.view')->name('dealer.vehicles');
         Route::get('/vehicles/create', [DealerController::class, 'createVehicle'])->middleware('staff.can:vehicles.edit_manual')->name('dealer.vehicles.create');
         Route::get('/vehicles/{vehicle}/edit', [DealerController::class, 'editVehicle'])->middleware('staff.can:vehicles.edit_manual')->name('dealer.vehicles.edit');
@@ -95,6 +103,8 @@ Route::prefix('dealer')->group(function () {
             Route::delete('/vehicles/{vehicle}', [DealerController::class, 'destroyVehicle'])->middleware('staff.can:vehicles.edit_manual')->name('dealer.vehicles.destroy');
             Route::post('/settings', [DealerController::class, 'updateSettings'])->middleware('staff.can:settings.manage')->name('dealer.settings.update');
             Route::post('/settings/migrate', [DealerController::class, 'migrateDatabase'])->middleware('staff.can:settings.manage')->name('dealer.settings.migrate');
+            Route::post('/policies', [CompliancePolicyController::class, 'store'])->middleware('staff.can:policies.manage')->name('dealer.policies.store');
+            Route::delete('/policies/{policy}', [CompliancePolicyController::class, 'destroy'])->middleware('staff.can:policies.manage')->name('dealer.policies.destroy');
             Route::post('/sync', [DealerController::class, 'sync'])->middleware('staff.can:sync.run')->name('dealer.sync');
             Route::post('/bookings', [DealerController::class, 'storeBooking'])->middleware('staff.can:bookings.manage')->name('dealer.bookings.store');
             Route::post('/bookings/{booking}/status', [DealerController::class, 'bookingStatus'])->middleware('staff.can:bookings.manage')->name('dealer.bookings.status');

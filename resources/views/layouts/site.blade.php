@@ -18,10 +18,13 @@
     @if ($siteDealer?->faviconUrl())
         <link rel="icon" href="{{ $siteDealer->faviconUrl() }}">
     @endif
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    @stack('head')
+    <link rel="preload" as="font" type="font/woff2" href="{{ asset('fonts/dm-sans-rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K4.woff2') }}" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="{{ asset('fonts/manrope-xn7gYHE41ni1AdIRggexSg.woff2') }}" crossorigin>
+    <link rel="stylesheet" href="{{ asset('fonts/site-fonts.css') }}">
     <link rel="stylesheet" href="{{ asset('css/site.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/upgrades.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/upgrades.min.css') }}">
+    @stack('styles')
 </head>
 <body class="public-site" data-saved="{{ implode(',', auth()->check() ? auth()->user()->savedVehicles()->pluck('vehicle_id')->all() : session('saved_vehicle_ids', [])) }}">
     <header>
@@ -90,6 +93,6 @@
         <div class="footnote">© {{ $siteDealer?->displayName() ?? 'Ghani Motors' }} <span>Finance subject to status. Terms apply.</span></div>
     </footer>
     @include('partials.contact-dock')
-    <script src="{{ asset('js/site.js') }}"></script>
+    <script src="{{ asset('js/site.min.js') }}" defer></script>
 </body>
 </html>
